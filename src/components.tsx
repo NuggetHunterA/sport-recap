@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { formatTime } from './nights';
+import { formatTime, liveLabel } from './nights';
 import type { RatedGame, Tier, Upcoming } from './nights';
 import type { Game, Team } from './types';
 import type { Favorite } from './favorites';
@@ -202,7 +202,9 @@ export function UpcomingCard({ item }: { item: Upcoming }) {
           <b>{game.away.short} @ {game.home.short}</b>
           {hint && <small class="hot">{hint}</small>}
         </div>
-        <div class="time">{formatTime(game.start)}<small>Uhr</small></div>
+        {game.state === 'in'
+          ? <div class="time live">Live<small>{liveLabel(game)}</small></div>
+          : <div class="time">{formatTime(game.start)}<small>Uhr</small></div>}
       </div>
     </Shell>
   );

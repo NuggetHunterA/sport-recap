@@ -201,8 +201,10 @@ function NightView(props: {
 function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilter: (f: Filter) => void; favorites: Favorite[] }) {
   const { data, error, loading } = useLoad<{ games: Game[]; failed: string[] }>(() => loadUpcoming(), []);
   const all = useMemo(() => prioritize(data?.games ?? [], favorites), [data, favorites]);
-  // Kennzahlen und Gruppen folgen dem Ligafilter
-  const shown = useMemo(() => all.filter((u) => filter === 'Alle' || u.game.league === filter), [all, filter]);
+  // Kennzahlen und Gruppen folgen dem Ligafilter; laufende Spiele stehen getrennt oben
+  const inFilter = useMemo(() => all.filter((u) => filter === 'Alle' || u.game.league === filter), [all, filter]);
+  const live = inFilter.filter((u) => u.game.state === 'in');
+  const shown = useMemo(() => inFilter.filter((u) => u.game.state === 'pre'), [inFilter]);
   const groups = useMemo(() => {
     const order: Tier[] = ['favorite', 'contender', 'rivalry', 'other'];
     return order.map((tier) => ({ tier, items: shown.filter((u) => u.tier === tier) })).filter((g) => g.items.length);
@@ -210,7 +212,7 @@ function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilt
   const total = shown.length;
   const highlights = shown.filter((u) => u.tier !== 'other').length;
   // loadUpcoming liefert die Spiele nach Uhrzeit sortiert
-  const first = data?.games.find((g) => filter === 'Alle' || g.league === filter);
+  const first = data?.games.find((g) => g.state === 'pre' && (filter === 'Alle' || g.league === filter));
 
   return (
     <>
@@ -231,13 +233,19 @@ function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilt
         {loading && <Skeletons />}
         {error && <div class="error">Der Spielplan konnte nicht geladen werden ({error}).</div>}
         {data && data.failed.length > 0 && <div class="error">Keine Daten für: {data.failed.join(', ')}</div>}
+        {live.length > 0 && (
+          <section class="section">
+            <div class="section-head"><h2>Läuft gerade</h2><span class="count">{live.length} {live.length === 1 ? 'Spiel' : 'Spiele'}</span></div>
+            {live.map((u) => <UpcomingCard key={u.game.id} item={u} />)}
+          </section>
+        )}
         {groups.map(({ tier, items }) => (
           <section class="section" key={tier}>
             <div class="section-head"><h2>{TIER_TITLES[tier]}</h2><span class="count">{items.length} {items.length === 1 ? 'Spiel' : 'Spiele'}</span></div>
             {items.map((u) => <UpcomingCard key={u.game.id} item={u} />)}
           </section>
         ))}
-        {data && !loading && groups.length === 0 && <div class="empty">In den nächsten 24 Stunden stehen keine Spiele an.</div>}
+        {data && !loading && groups.length === 0 && live.length === 0 && <div class="empty">In den nächsten 24 Stunden stehen keine Spiele an.</div>}
       </main>
     </>
   );
