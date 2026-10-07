@@ -126,8 +126,11 @@ function NightView(props: {
       .filter((f) => filter === 'Alle' || f.league === filter)
       .map((f) => ({ fav: f, item: shown.find((g) => favoriteOf(g.game, [f])) }))
       .filter(({ item }) => !hotOnly || item?.rating.hot);
-    const tips = hotSorted.filter((g) => !isFav(g) && g !== hero);
-    const rest = hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot);
+    // Höchstens 2 Top-Tipps, 3 wenn das Spiel der Nacht von einem Lieblingsteam ist; der Rest kommt zu „Weitere Spiele“
+    const candidates = hotSorted.filter((g) => !isFav(g) && g !== hero);
+    const limit = hero && isFav(hero) ? 3 : 2;
+    const tips = candidates.slice(0, limit);
+    const rest = [...candidates.slice(limit), ...(hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot))];
     // Kennzahlen folgen dem Ligafilter
     return {
       hero, favs, tips, rest,
@@ -185,7 +188,7 @@ function NightView(props: {
                 <div class="section-head"><h2>Weitere Spiele</h2><span class="count">{view.rest.length} {view.rest.length === 1 ? 'Spiel' : 'Spiele'}</span></div>
                 {showRest
                   ? view.rest.map((item) => <GameCard key={item.game.id} {...card(item)} />)
-                  : <button type="button" class="more" onClick={() => setShowRest(true)}>{view.rest.length} weniger spannende Spiele anzeigen</button>}
+                  : <button type="button" class="more" onClick={() => setShowRest(true)}>{view.rest.length} weitere Spiele anzeigen</button>}
               </section>
             )}
             {view.played === 0 && <div class="empty">{data.games.length ? 'In dieser Liga gab es keine Spiele.' : 'In dieser Nacht gab es keine Spiele.'}</div>}
