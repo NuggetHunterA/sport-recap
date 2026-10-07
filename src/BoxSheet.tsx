@@ -5,7 +5,7 @@ import type { BoxScore, LineScore, Table, TeamBox } from './boxscore';
 import type { Game } from './types';
 
 /** Ligen, für die es einen Boxscore gibt */
-export const BOX_LEAGUES: Game['league'][] = ['NBA', 'MLB'];
+export const BOX_LEAGUES: Game['league'][] = ['NBA', 'MLB', 'NFL'];
 
 export function canShowBox(game: Game): boolean {
   return game.state === 'post' && BOX_LEAGUES.includes(game.league);
@@ -57,8 +57,18 @@ function StatTable({ table, highlight }: { table: Table; highlight: boolean }) {
 }
 
 function TeamTables({ team, league }: { team?: TeamBox; league: Game['league'] }) {
-  if (!team || team.tables.length === 0) return <div class="empty">Keine Spielerwerte verfügbar.</div>;
-  return <>{team.tables.map((t) => <StatTable key={t.title} table={t} highlight={league === 'NBA'} />)}</>;
+  if (!team || (team.tables.length === 0 && !team.touchdowns)) return <div class="empty">Keine Spielerwerte verfügbar.</div>;
+  return (
+    <>
+      {team.touchdowns && (
+        <div class="box-scroll td-list">
+          <h3>Touchdowns</h3>
+          <ul>{team.touchdowns.map((t, i) => <li key={i}>{t}</li>)}</ul>
+        </div>
+      )}
+      {team.tables.map((t) => <StatTable key={t.title} table={t} highlight={league === 'NBA'} />)}
+    </>
+  );
 }
 
 export function BoxSheet({ game, onClose }: { game: Game; onClose: () => void }) {

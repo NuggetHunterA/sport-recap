@@ -47,6 +47,37 @@ describe('Boxscore', () => {
     expect(box.home?.tables).toEqual([]);
   });
 
+  it('NFL: QB, beste Rusher und Receiver, Defense mit Sacks und INTs, Touchdowns', () => {
+    const grp = (name: string, labels: string[], athletes: unknown[]) => ({ name, labels, athletes });
+    const s = {
+      scoringPlays: [
+        { team: { abbreviation: 'GS' }, scoringType: { abbreviation: 'TD' }, period: { number: 2 }, text: 'T. Kelce 12 Yd pass from P. Mahomes' },
+        { team: { abbreviation: 'GS' }, scoringType: { abbreviation: 'FG' }, period: { number: 3 }, text: 'H. Butker 40 Yd Field Goal' },
+        { team: { abbreviation: 'LAL' }, scoringType: { abbreviation: 'TD' }, period: { number: 4 }, text: 'T. Etienne 3 Yd Run' },
+      ],
+      boxscore: { players: [
+        { team: { abbreviation: 'GS' }, statistics: [
+          grp('passing', ['C/ATT', 'YDS', 'AVG', 'TD', 'INT', 'SACKS', 'QBR', 'RTG'], [ath('P. Mahomes', ['24/35', '281', '8.0', '2', '1', '2-14', '61.0', '98.7'])]),
+          grp('rushing', ['CAR', 'YDS', 'AVG', 'TD', 'LONG'], [
+            ath('A', ['5', '12', '2.4', '0', '5']), ath('B', ['14', '77', '5.5', '1', '20']), ath('C', ['3', '30', '10', '0', '18']), ath('D', ['2', '4', '2', '0', '3']),
+          ]),
+          grp('receiving', ['REC', 'YDS', 'AVG', 'TD', 'LONG', 'TGT'], [ath('T. Kelce', ['8', '90', '11.3', '1', '25', '10'])]),
+          grp('defensive', ['TOT', 'SOLO', 'SACKS', 'TFL', 'PD', 'QB HTS', 'TD'], [ath('C. Jones', ['4', '3', '1.5', '2', '0', '3', '0']), ath('N. Bolton', ['9', '6', '0', '1', '0', '0', '0'])]),
+          grp('interceptions', ['INT', 'YDS', 'TD'], [ath('T. McDuffie', ['1', '22', '0'])]),
+        ] },
+        { team: { abbreviation: 'LAL' }, statistics: [] },
+      ] },
+    };
+    const box = parseBoxScore(s, game('NFL'));
+    const t = Object.fromEntries((box.away?.tables ?? []).map((x) => [x.title, x]));
+    expect(t.Quarterback.rows[0].stats).toEqual(['24/35', '281', '2', '1']);
+    expect(t.Rushing.rows.map((r) => r.name)).toEqual(['B', 'C', 'A']);
+    expect(t.Receiving.rows[0].stats).toEqual(['8', '90', '1']);
+    expect(t.Defense.rows.map((r) => [r.name, ...r.stats])).toEqual([['C. Jones', '1.5', '0'], ['T. McDuffie', '0', '1']]);
+    expect(box.away?.touchdowns).toEqual(['Q2 · T. Kelce 12 Yd pass from P. Mahomes']);
+    expect(box.home?.touchdowns).toEqual(['Q4 · T. Etienne 3 Yd Run']);
+  });
+
   it('fehlende Daten ergeben einen leeren Boxscore statt eines Fehlers', () => {
     expect(hasBoxScore(parseBoxScore({}, game('NBA')))).toBe(false);
     expect(hasBoxScore(parseBoxScore(null, game('MLB')))).toBe(false);

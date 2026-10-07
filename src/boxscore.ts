@@ -22,6 +22,8 @@ export interface TeamBox {
   abbr: string;
   name: string;
   tables: Table[];
+  /** NFL: Touchdowns aus den Scoring-Plays, z. B. „Q2 · T. Kelce 12 Yd pass from P. Mahomes“ */
+  touchdowns?: string[];
 }
 
 export interface LineScore {
@@ -62,6 +64,28 @@ const PITCHING: Column[] = [
   { label: 'K', match: ['k', 'so', 'strikeouts'] },
 ];
 
+const PASSING: Column[] = [
+  { label: 'C/ATT', match: ['c/att', 'catt', 'completions/passingattempts'] },
+  { label: 'YDS', match: ['yds', 'passingyards'] },
+  { label: 'TD', match: ['td', 'passingtouchdowns'] },
+  { label: 'INT', match: ['int', 'interceptions'] },
+];
+
+const RUSHING: Column[] = [
+  { label: 'CAR', match: ['car', 'rushingattempts'] },
+  { label: 'YDS', match: ['yds', 'rushingyards'] },
+  { label: 'TD', match: ['td', 'rushingtouchdowns'] },
+];
+
+const RECEIVING: Column[] = [
+  { label: 'REC', match: ['rec', 'receptions'] },
+  { label: 'YDS', match: ['yds', 'receivingyards'] },
+  { label: 'TD', match: ['td', 'receivingtouchdowns'] },
+];
+
+const SACKS: Column[] = [{ label: 'SACKS', match: ['sacks'] }];
+const INTS: Column[] = [{ label: 'INT', match: ['int', 'interceptions'] }];
+
 const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[^a-z0-9.]/g, '');
 
 /** Index jeder gewünschten Spalte in einer ESPN-Statistikgruppe, -1 wenn nicht vorhanden. */
@@ -91,6 +115,28 @@ function table(group: any, columns: Column[], title: string): Table | null {
   return rows.length ? { title, columns: columns.map((c) => c.label), rows } : null;
 }
 
+/** Nur die besten `limit` Spieler nach Spalte `by` (NFL: Rushing und Receiving). */
+function top(t: Table | null, by: number, limit: number): Table | null {
+  if (!t) return null;
+  const rows = [...t.rows].sort((a, b) => (parseFloat(b.stats[by]) || 0) - (parseFloat(a.stats[by]) || 0)).slice(0, limit);
+  return { ...t, rows };
+}
+
+/** NFL-Defense: nur Spieler mit Sack oder Interception. */
+function defense(groups: any[]): Table | null {
+  const sacks = table(groupOf(groups, 'defensive'), SACKS, 'Defense');
+  const ints = table(groupOf(groups, 'interceptions'), INTS, 'Defense');
+  const rows = new Map<string, Table['rows'][number]>();
+  for (const r of sacks?.rows ?? []) rows.set(r.name, { ...r, stats: [r.stats[0], '0'] });
+  for (const r of ints?.rows ?? []) {
+    const row = rows.get(r.name) ?? { ...r, stats: ['0', '0'] };
+    row.stats[1] = r.stats[0];
+    rows.set(r.name, row);
+  }
+  const list = [...rows.values()].filter((r) => r.stats.some((v) => (parseFloat(v) || 0) > 0));
+  return list.length ? { title: 'Defense', columns: ['SACKS', 'INT'], rows: list } : null;
+}
+
 function groupOf(groups: any[], type: string): any {
   return groups.find((g) => norm(g?.type) === type || norm(g?.name) === type);
 }
@@ -106,6 +152,11 @@ function teamBox(entry: any, league: Game['league']): TeamBox {
     const pit = table(groupOf(groups, 'pitching') ?? groups[1], PITCHING, 'Pitcher');
     if (bat) tables.push(bat);
     if (pit) tables.push(pit);
+  } else {
+    const qb = top(table(groupOf(groups, 'passing'), PASSING, 'Quarterback'), 1, 2);
+    const rush = top(table(groupOf(groups, 'rushing'), RUSHING, 'Rushing'), 1, 3);
+    const rec = top(table(groupOf(groups, 'receiving'), RECEIVING, 'Receiving'), 1, 3);
+    for (const t of [qb, rush, rec, defense(groups)]) if (t) tables.push(t);
   }
   return { abbr: entry?.team?.abbreviation ?? '?', name: entry?.team?.shortDisplayName ?? entry?.team?.displayName ?? '?', tables };
 }
@@ -162,6 +213,13 @@ function lineScore(s: any, game: Pick<Game, 'away' | 'home'>): LineScore | undef
   };
 }
 
+/** NFL: Touchdowns eines Teams aus summary.scoringPlays. */
+function touchdowns(s: any, abbr: string): string[] {
+  return (s?.scoringPlays ?? [])
+    .filter((p: any) => norm(p?.scoringType?.abbreviation ?? p?.type?.abbreviation) === 'td' && p?.team?.abbreviation === abbr && p?.text)
+    .map((p: any) => (p?.period?.number ? `Q${p.period.number} · ${p.text}` : String(p.text)));
+}
+
 export function parseBoxScore(s: any, game: Pick<Game, 'league' | 'away' | 'home'>): BoxScore {
   const players: any[] = s?.boxscore?.players ?? [];
   const box: BoxScore = {};
@@ -169,12 +227,18 @@ export function parseBoxScore(s: any, game: Pick<Game, 'league' | 'away' | 'home
     box.away = teamBox(side(players, game, 'away'), game.league);
     box.home = teamBox(side(players, game, 'home'), game.league);
   }
+  if (game.league === 'NFL') {
+    for (const which of ['away', 'home'] as const) {
+      const tds = touchdowns(s, game[which].abbr);
+      if (tds.length) box[which] = { ...(box[which] ?? { abbr: game[which].abbr, name: game[which].short, tables: [] }), touchdowns: tds };
+    }
+  }
   if (game.league === 'MLB') box.line = lineScore(s, game);
   return box;
 }
 
 export function hasBoxScore(box: BoxScore): boolean {
-  return Boolean(box.line || box.away?.tables.length || box.home?.tables.length);
+  return Boolean(box.line || box.away?.tables.length || box.home?.tables.length || box.away?.touchdowns || box.home?.touchdowns);
 }
 
 export async function loadBoxScore(game: Game): Promise<BoxScore> {
