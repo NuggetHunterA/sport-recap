@@ -107,10 +107,14 @@ export async function scoreboard(league: League, date: string): Promise<Game[]> 
   return (data?.events ?? []).map((e: any) => parseEvent(league, e)).filter(Boolean) as Game[];
 }
 
+/** Spielzusammenfassung; beendete Spiele ändern sich nicht mehr, daher ein Tag Cache. */
+export function summary(game: Pick<Game, 'league' | 'id'>): Promise<any> {
+  return getJson(`${BASE}/${PATHS[game.league]}/summary?event=${game.id}`, 24 * 60 * MINUTE);
+}
+
 export async function withPlays(game: Game): Promise<Game> {
   try {
-    // Beendete Spiele ändern sich nicht mehr
-    const s = await getJson(`${BASE}/${PATHS[game.league]}/summary?event=${game.id}`, 24 * 60 * MINUTE);
+    const s = await summary(game);
     return { ...game, plays: parsePlays(s) };
   } catch {
     // Ohne Spielverlauf wird nur nach Endabstand bewertet, wie in HA

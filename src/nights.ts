@@ -53,7 +53,11 @@ const cacheKey = (date: string) => `night:v4:${date}`;
 export async function loadNight(date: string, now = new Date()): Promise<Night> {
   try {
     const cached = localStorage.getItem(cacheKey(date));
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      // Neu bewerten, damit geänderte Regeln auch für gespeicherte Nächte gelten
+      const night: Night = JSON.parse(cached);
+      return { ...night, games: night.games.map(({ game }) => ({ game, rating: rate(game) })) };
+    }
   } catch { /* kein Cache verfügbar */ }
 
   const from = berlinTime(addDays(date, -1), 12).getTime();

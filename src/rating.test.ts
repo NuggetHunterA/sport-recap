@@ -190,3 +190,17 @@ describe('verbesserte Bewertung', () => {
     expect(parseLeaders([{ leaders: [{ name: 'points', leaders: [{ value: 51 }] }] }])).toEqual([{ stat: 'points', value: 51 }]);
   });
 });
+
+describe('gespeicherte Nächte', () => {
+  it('werden mit den aktuellen Regeln neu bewertet (Preseason höchstens 3 Balken)', async () => {
+    const { loadNight } = await import('./nights');
+    const game: Game = {
+      id: '9', league: 'NBA', start: '2026-10-06T23:30:00Z', state: 'post', season: 'preseason',
+      away: { name: 'A', short: 'A', abbr: 'A', color: '#000', score: 120 }, home: { name: 'B', short: 'B', abbr: 'B', color: '#000', score: 118 }, plays: [],
+    };
+    const store = new Map([['night:v4:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
+    (globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: () => {} };
+    const night = await loadNight('2026-10-07');
+    expect(night.games[0].rating.level).toBeLessThanOrEqual(3);
+  });
+});
