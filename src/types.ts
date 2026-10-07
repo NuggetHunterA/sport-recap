@@ -12,6 +12,14 @@ export interface Team {
   logo?: string;
   record?: string; // "90-72"
   score: number;
+  /** Nur MLB: Hits des Teams */
+  hits?: number;
+}
+
+/** Statistik-Bestwert eines Spielers aus dem Scoreboard, z. B. points 52 */
+export interface Leader {
+  stat: string;
+  value: number;
 }
 
 /** Punktestand nach einem Scoring-Play, aus Sicht Auswärts/Heim. */
@@ -34,6 +42,7 @@ export interface Game {
   away: Team;
   home: Team;
   plays?: ScoringPlay[];
+  leaders?: Leader[];
 }
 
 export type DramaKind = 'walkoff' | 'extra' | 'ot' | 'comeback' | 'leadchanges' | 'lateclose' | 'close';
@@ -41,6 +50,12 @@ export type DramaKind = 'walkoff' | 'extra' | 'ot' | 'comeback' | 'leadchanges' 
 export interface Rating {
   drama: DramaKind | null;
   rivalry: boolean;
+  /** Beide Teams mit starker Bilanz */
+  strong: boolean;
+  /** No-Hitter, 50-Punkte-Spiel und Ähnliches */
+  historic: boolean;
+  /** Spannungswert 0 bis 100 */
+  score: number;
   hot: boolean;
   /** 1 (auslassen) bis 5 (Pflichtprogramm) */
   level: number;

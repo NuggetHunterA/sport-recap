@@ -132,3 +132,10 @@ h2 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 80
 .team-star { color: #4b5563; display: inline-flex; }
 .team-row.on { background: rgba(255,122,26,.07); }
 .team-row.on .team-star { color: var(--accent); }
+
+/* Urteil nach dem Aufdecken */
+.vote { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 12px; color: var(--muted); }
+.vote span { margin-right: 4px; letter-spacing: .04em; }
+.vote button { min-width: 44px; min-height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
+.vote button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.more:disabled { opacity: .4; cursor: default; }

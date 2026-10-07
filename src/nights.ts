@@ -1,9 +1,8 @@
 // Zeitfenster („letzte Nacht“, „heute Abend“) und Priorisierung.
-import { CONTENDER_MIN_GAMES, CONTENDER_WIN_PCT } from './config';
 import { scoreboards, withPlays } from './espn';
 import { favoriteOf } from './favorites';
 import type { Favorite } from './favorites';
-import { isRivalry, rate } from './rating';
+import { bothStrong, isRivalry, rate } from './rating';
 import type { Game, Rating } from './types';
 
 export const TZ = 'Europe/Berlin';
@@ -45,7 +44,7 @@ export interface Night {
   failed: string[];
 }
 
-const cacheKey = (date: string) => `night:v2:${date}`;
+const cacheKey = (date: string) => `night:v4:${date}`;
 
 /**
  * Beendete Spiele der Nacht vor `date`: Start zwischen Vortag 12:00 und `date` 12:00 Berliner Zeit.
@@ -88,19 +87,8 @@ export const TIER_TITLES: Record<Tier, string> = {
   other: 'Weitere Spiele',
 };
 
-function winPct(record?: string): number | null {
-  const parts = (record ?? '').split('-').map((n) => parseInt(n, 10));
-  if (parts.length < 2 || parts.some(isNaN)) return null;
-  const [w, l, t = 0] = parts;
-  const games = w + l + t;
-  return games >= CONTENDER_MIN_GAMES ? (w + t / 2) / games : null;
-}
-
 export function isContenderMatchup(game: Game): boolean {
-  if (game.season === 'playoff') return true;
-  const a = winPct(game.away.record);
-  const b = winPct(game.home.record);
-  return a !== null && b !== null && a >= CONTENDER_WIN_PCT && b >= CONTENDER_WIN_PCT;
+  return game.season === 'playoff' || bothStrong(game);
 }
 
 export function tierOf(game: Game, favs: Favorite[]): Tier {

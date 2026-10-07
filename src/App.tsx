@@ -5,6 +5,9 @@ import type { Favorite } from './favorites';
 import { TIER_TITLES, addDays, berlinToday, formatDay, loadNight, loadUpcoming, prioritize } from './nights';
 import type { Night, Tier } from './nights';
 import { TeamsView } from './TeamsView';
+import { loadVotes, makeVote, saveVotes } from './votes';
+import type { Vote } from './votes';
+import type { RatedGame } from './nights';
 import type { Game } from './types';
 import type { League } from './types';
 import { LEAGUES } from './types';
@@ -29,6 +32,15 @@ export function App() {
   const [filter, setFilter] = useState<Filter>('Alle');
   const [revealed, setRevealed] = useState(readRevealed);
   const [favorites, setFavorites] = useState(loadFavorites);
+  const [votes, setVotes] = useState(loadVotes);
+  const castVote = (item: RatedGame, v: 1 | -1) => {
+    const next = { ...votes };
+    // Nochmal tippen nimmt das Urteil zurück
+    if (next[item.game.id]?.vote === v) delete next[item.game.id];
+    else next[item.game.id] = makeVote(item, v);
+    setVotes(next);
+    saveVotes(next);
+  };
   const updateFavorites = (next: Favorite[]) => {
     setFavorites(next);
     saveFavorites(next);
@@ -44,9 +56,9 @@ export function App() {
   return (
     <div class="app">
       <div class="glow" aria-hidden="true" />
-      {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} />}
+      {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} votes={votes} castVote={castVote} />}
       {tab === 'tonight' && <TonightView filter={filter} setFilter={setFilter} favorites={favorites} />}
-      {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} />}
+      {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} votes={votes} />}
       <nav class="nav" aria-label="Hauptmenü">
         <button type="button" aria-current={tab === 'night' ? 'page' : undefined} onClick={() => setTab('night')}>{Icon.moon} Letzte Nacht</button>
         <button type="button" aria-current={tab === 'tonight' ? 'page' : undefined} onClick={() => setTab('tonight')}>{Icon.clock} Heute Abend</button>
@@ -84,8 +96,16 @@ function NightView(props: {
   date: string; today: string; setDate: (d: string) => void;
   filter: Filter; setFilter: (f: Filter) => void;
   revealed: Set<string>; toggle: (id: string) => () => void; favorites: Favorite[];
+  votes: Record<string, Vote>; castVote: (item: RatedGame, v: 1 | -1) => void;
 }) {
-  const { date, today, setDate, filter, setFilter, revealed, toggle, favorites } = props;
+  const { date, today, setDate, filter, setFilter, revealed, toggle, favorites, votes, castVote } = props;
+  const card = (item: RatedGame) => ({
+    item,
+    open: revealed.has(item.game.id),
+    toggle: toggle(item.game.id),
+    vote: votes[item.game.id]?.vote,
+    onVote: (v: 1 | -1) => castVote(item, v),
+  });
   const { data, error, loading } = useLoad<Night>(() => loadNight(date), [date]);
   const [showRest, setShowRest] = useState(false);
   useEffect(() => setShowRest(false), [date]);
@@ -94,7 +114,8 @@ function NightView(props: {
     const all = data?.games ?? [];
     const shown = all.filter((g) => filter === 'Alle' || g.game.league === filter);
     const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => a.rating.sortKey - b.rating.sortKey);
-    const hero = hotSorted.find((g) => g.rating.level === 5) ?? null;
+    // Das spannendste sehenswerte Spiel, egal wie viele Balken
+    const hero = [...hotSorted].sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
     const isFav = (g: { game: Game }) => favoriteOf(g.game, favorites) !== null;
     const favs = favorites
       .filter((f) => filter === 'Alle' || f.league === filter)
@@ -134,26 +155,26 @@ function NightView(props: {
         {data && data.failed.length > 0 && <div class="error">Keine Daten für: {data.failed.join(', ')}</div>}
         {data && !loading && (
           <>
-            {view.hero && <Hero item={view.hero} open={revealed.has(view.hero.game.id)} toggle={toggle(view.hero.game.id)} />}
+            {view.hero && <Hero {...card(view.hero)} />}
             {view.favs.length > 0 && (
               <section class="section">
                 <div class="section-head"><h2>Meine Teams</h2><span class="count">{view.favs.length} Teams</span></div>
                 {view.favs.map(({ fav, item }) => item
-                  ? <GameCard key={fav.label} item={item} open={revealed.has(item.game.id)} toggle={toggle(item.game.id)} />
+                  ? <GameCard key={fav.label} {...card(item)} />
                   : <NoGameCard key={fav.label} name={fav.label} league={fav.league} />)}
               </section>
             )}
             {view.tips.length > 0 && (
               <section class="section">
                 <div class="section-head"><h2>Top-Tipps</h2><span class="count">{view.tips.length} sehenswert</span></div>
-                {view.tips.map((item) => <GameCard key={item.game.id} item={item} open={revealed.has(item.game.id)} toggle={toggle(item.game.id)} />)}
+                {view.tips.map((item) => <GameCard key={item.game.id} {...card(item)} />)}
               </section>
             )}
             {view.rest.length > 0 && (
               <section class="section">
                 <div class="section-head"><h2>Weitere Spiele</h2><span class="count">{view.rest.length} {view.rest.length === 1 ? 'Spiel' : 'Spiele'}</span></div>
                 {showRest
-                  ? view.rest.map((item) => <GameCard key={item.game.id} item={item} open={revealed.has(item.game.id)} toggle={toggle(item.game.id)} />)
+                  ? view.rest.map((item) => <GameCard key={item.game.id} {...card(item)} />)
                   : <button type="button" class="more" onClick={() => setShowRest(true)}>{view.rest.length} weniger spannende Spiele anzeigen</button>}
               </section>
             )}

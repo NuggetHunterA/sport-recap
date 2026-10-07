@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { parseEvent, parsePlays } from './espn';
+import { parseEvent, parseLeaders, parsePlays } from './espn';
 import { addDays, berlinTime, tierOf } from './nights';
-import { rate, reason } from './rating';
+import { isGarbageTime, rate, reason } from './rating';
 import type { Game, League, ScoringPlay } from './types';
 
 function game(league: League, away: [string, number], home: [string, number], plays: ScoringPlay[] = [], extra: Partial<Game> = {}): Game {
@@ -68,7 +68,7 @@ describe('spoilerfreie Gründe', () => {
   it('nennen weder Sieger noch Richtung', () => {
     const kinds = ['walkoff', 'extra', 'ot', 'comeback', 'leadchanges', 'lateclose', 'close', null] as const;
     for (const k of kinds) {
-      const text = reason(k, true, false, false);
+      const text = reason({ drama: k, hot: true, rivalry: false, playoff: false });
       expect(text).not.toMatch(/walk-off|sieg|gewinn|verlier|heim|auswärts/i);
     }
   });
@@ -150,5 +150,38 @@ describe('Teamliste', async () => {
     for (const [league, pairs] of Object.entries(RIVALRIES)) {
       for (const name of pairs.flat()) expect(TEAMS.some((t) => t.league === league && t.name.includes(name)), name).toBe(true);
     }
+  });
+});
+
+describe('verbesserte Bewertung', () => {
+  it('früher Rückstand und klarer Sieg ist kein Comeback', () => {
+    const r = rate(game('NBA', ['A', 120], ['B', 100], [p(0, 12, 1, 100), p(60, 50, 2, 0), p(120, 100, 4, 0)]));
+    expect(r.drama).not.toBe('comeback');
+    expect(r.hot).toBe(false);
+  });
+  it('später Rückstand zählt als Comeback, auch bei klarem Ende', () => {
+    const r = rate(game('NBA', ['A', 115], ['B', 100], [p(70, 84, 3, 300), p(115, 100, 4, 0)]));
+    expect(r.drama).toBe('comeback');
+  });
+  it('Garbage Time: 15 vorne 3 Minuten vor Schluss, am Ende nur 6, ist nicht eng', () => {
+    const g = game('NBA', ['A', 104], ['B', 98], [p(100, 85, 4, 200), p(102, 92, 4, 120), p(104, 98, 4, 10)]);
+    expect(isGarbageTime(g)).toBe(true);
+    expect(rate(g).hot).toBe(false);
+  });
+  it('No-Hitter und 50-Punkte-Spiel sind historisch, auch bei klarem Ergebnis', () => {
+    const nh = game('MLB', ['A', 0], ['B', 6]);
+    nh.away.hits = 0;
+    expect(rate(nh).reason).toBe('Historischer Abend');
+    expect(rate(game('NBA', ['A', 130], ['B', 100], [], { leaders: [{ stat: 'points', value: 52 }] })).level).toBeGreaterThanOrEqual(4);
+  });
+  it('Duell zweier starker Teams gibt einen Bonus', () => {
+    const base = game('NBA', ['A', 110], ['B', 101]);
+    const strong = game('NBA', ['A', 110], ['B', 101]);
+    strong.away.record = '40-10';
+    strong.home.record = '38-12';
+    expect(rate(strong).score).toBeGreaterThan(rate(base).score);
+  });
+  it('liest Bestwerte', () => {
+    expect(parseLeaders([{ leaders: [{ name: 'points', leaders: [{ value: 51 }] }] }])).toEqual([{ stat: 'points', value: 51 }]);
   });
 });

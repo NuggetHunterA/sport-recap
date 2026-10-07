@@ -4,6 +4,7 @@ import { Badge, Icon } from './components';
 import { FAVORITES } from './config';
 import { matches } from './favorites';
 import type { Favorite } from './favorites';
+import type { Vote } from './votes';
 import type { League } from './types';
 import { LEAGUES } from './types';
 import { TEAMS } from './teams';
@@ -11,7 +12,15 @@ import type { TeamInfo } from './teams';
 
 type Filter = 'Alle' | League;
 
-export function TeamsView({ favorites, setFavorites }: { favorites: Favorite[]; setFavorites: (f: Favorite[]) => void }) {
+export function TeamsView({ favorites, setFavorites, votes }: { favorites: Favorite[]; setFavorites: (f: Favorite[]) => void; votes: Record<string, Vote> }) {
+  const [copied, setCopied] = useState(false);
+  const voteList = Object.values(votes);
+  const copyVotes = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(voteList, null, 1));
+      setCopied(true);
+    } catch { /* Zwischenablage gesperrt */ }
+  };
   const [filter, setFilter] = useState<Filter>('Alle');
   const data = TEAMS;
 
@@ -68,9 +77,12 @@ export function TeamsView({ favorites, setFavorites }: { favorites: Favorite[]; 
             </div>
           </section>
         ))}
-        {(
-          <button type="button" class="more" onClick={() => setFavorites(FAVORITES)}>Auf meine ursprünglichen Teams zurücksetzen</button>
-        )}
+        <button type="button" class="more" onClick={() => setFavorites(FAVORITES)}>Auf meine ursprünglichen Teams zurücksetzen</button>
+        <section class="section">
+          <div class="section-head"><h2>Deine Urteile</h2><span class="count">{voteList.length} Spiele</span></div>
+          <p class="lead">Nach dem Aufdecken kannst du angeben, ob sich ein Spiel gelohnt hat. Kopiere die Liste und schick sie Claude, um die Bewertung nachzuschärfen.</p>
+          <button type="button" class="more" disabled={!voteList.length} onClick={copyVotes}>{copied ? 'Kopiert' : 'Urteile kopieren'}</button>
+        </section>
       </main>
     </>
   );
