@@ -28,18 +28,6 @@ async function getJson(url: string, ttl = 5 * MINUTE): Promise<any> {
   return data;
 }
 
-/** Wie getJson, aber zusätzlich im Browser gespeichert (überlebt Neustarts). */
-async function getStoredJson(url: string, ttl: number): Promise<any> {
-  const key = `espn:${url}`;
-  try {
-    const stored = JSON.parse(localStorage.getItem(key) ?? 'null');
-    if (stored && Date.now() - stored.at < ttl) return stored.data;
-  } catch { /* neu laden */ }
-  const data = await getJson(url, ttl);
-  try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), data })); } catch { /* voll */ }
-  return data;
-}
-
 function team(c: any): Team {
   const t = c?.team ?? {};
   return {
@@ -134,27 +122,3 @@ export async function scoreboards(dates: string[]): Promise<{ games: Game[]; fai
   return { games, failed };
 }
 
-export interface TeamInfo {
-  league: League;
-  name: string;
-  short: string;
-  abbr: string;
-  color: string;
-  logo?: string;
-}
-
-/** Alle Teams einer Liga, alphabetisch. */
-export async function teams(league: League): Promise<TeamInfo[]> {
-  const data = await getStoredJson(`${BASE}/${PATHS[league]}/teams`, 7 * 24 * 60 * MINUTE);
-  const list: any[] = data?.sports?.[0]?.leagues?.[0]?.teams ?? [];
-  return list
-    .map(({ team: t }) => ({
-      league,
-      name: t?.displayName ?? '?',
-      short: t?.shortDisplayName ?? t?.name ?? '?',
-      abbr: t?.abbreviation ?? '?',
-      color: t?.color ? `#${t.color}` : '#2A313C',
-      logo: t?.logos?.[0]?.href,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-}

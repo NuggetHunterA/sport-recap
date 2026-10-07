@@ -1,34 +1,31 @@
 import { useMemo, useState } from 'preact/hooks';
-import { FilterBar, useLoad } from './App';
-import { Badge, Icon, Skeletons } from './components';
+import { FilterBar } from './App';
+import { Badge, Icon } from './components';
 import { FAVORITES } from './config';
-import { teams } from './espn';
-import type { TeamInfo } from './espn';
 import { matches } from './favorites';
 import type { Favorite } from './favorites';
 import type { League } from './types';
 import { LEAGUES } from './types';
+import { TEAMS } from './teams';
+import type { TeamInfo } from './teams';
 
 type Filter = 'Alle' | League;
 
 export function TeamsView({ favorites, setFavorites }: { favorites: Favorite[]; setFavorites: (f: Favorite[]) => void }) {
   const [filter, setFilter] = useState<Filter>('Alle');
-  const { data, error, loading } = useLoad<TeamInfo[]>(
-    async () => (await Promise.all(LEAGUES.map((l) => teams(l).catch(() => [])))).flat(),
-    [],
-  );
+  const data = TEAMS;
 
   const isFav = (t: TeamInfo) => favorites.some((f) => f.league === t.league && matches(f, t.name));
   const toggle = (t: TeamInfo) => setFavorites(isFav(t)
     ? favorites.filter((f) => !(f.league === t.league && matches(f, t.name)))
-    : [...favorites, { league: t.league, match: t.name, label: t.short }]);
+    : [...favorites, { league: t.league, match: t.short, label: t.short }]);
 
   const groups = useMemo(() => LEAGUES
     .filter((l) => filter === 'Alle' || filter === l)
-    .map((league) => ({ league, teams: (data ?? []).filter((t) => t.league === league) }))
-    .filter((g) => g.teams.length), [data, filter]);
+    .map((league) => ({ league, teams: data.filter((t) => t.league === league) }))
+    .filter((g) => g.teams.length), [filter]);
 
-  const selected = (data ?? []).filter(isFav);
+  const selected = data.filter(isFav);
 
   return (
     <>
@@ -42,8 +39,6 @@ export function TeamsView({ favorites, setFavorites }: { favorites: Favorite[]; 
       </header>
       <FilterBar filter={filter} setFilter={setFilter} />
       <main>
-        {loading && <Skeletons />}
-        {error && <div class="error">Die Teams konnten nicht geladen werden ({error}).</div>}
         {selected.length > 0 && (
           <section class="section">
             <div class="section-head"><h2>Ausgewählt</h2><span class="count">{selected.length} Teams</span></div>
@@ -73,7 +68,7 @@ export function TeamsView({ favorites, setFavorites }: { favorites: Favorite[]; 
             </div>
           </section>
         ))}
-        {data && !loading && (
+        {(
           <button type="button" class="more" onClick={() => setFavorites(FAVORITES)}>Auf meine ursprünglichen Teams zurücksetzen</button>
         )}
       </main>

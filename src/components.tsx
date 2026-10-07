@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { formatTime } from './nights';
 import type { RatedGame, Tier, Upcoming } from './nights';
@@ -16,10 +17,11 @@ export const Icon = {
 };
 
 export function Badge({ team, size }: { team: Pick<Team, 'color' | 'logo' | 'abbr'>; size: number }) {
+  const [broken, setBroken] = useState(false);
   return (
     <span class="badge" style={{ width: size, height: size, background: team.color, fontSize: Math.round(size * 0.36) }}>
-      {team.logo
-        ? <img src={team.logo} alt={team.abbr} loading="lazy" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')} />
+      {team.logo && !broken
+        ? <img src={team.logo} alt={team.abbr} loading="lazy" onError={() => setBroken(true)} />
         : team.abbr}
     </span>
   );
