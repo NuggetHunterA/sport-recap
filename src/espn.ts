@@ -110,3 +110,28 @@ export async function scoreboards(dates: string[]): Promise<{ games: Game[]; fai
   const games = parts.flat().filter((g) => (seen.has(g.id) ? false : (seen.add(g.id), true)));
   return { games, failed };
 }
+
+export interface TeamInfo {
+  league: League;
+  name: string;
+  short: string;
+  abbr: string;
+  color: string;
+  logo?: string;
+}
+
+/** Alle Teams einer Liga, alphabetisch. */
+export async function teams(league: League): Promise<TeamInfo[]> {
+  const data = await getJson(`${BASE}/${PATHS[league]}/teams`);
+  const list: any[] = data?.sports?.[0]?.leagues?.[0]?.teams ?? [];
+  return list
+    .map(({ team: t }) => ({
+      league,
+      name: t?.displayName ?? '?',
+      short: t?.shortDisplayName ?? t?.name ?? '?',
+      abbr: t?.abbreviation ?? '?',
+      color: t?.color ? `#${t.color}` : '#2A313C',
+      logo: t?.logos?.[0]?.href,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+}

@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { GameCard, Hero, Icon, NoGameCard, Skeletons, UpcomingCard } from './components';
-import { FAVORITES } from './config';
-import { TIER_TITLES, addDays, berlinToday, formatDay, loadNight, loadUpcoming } from './nights';
-import type { Night, Tier, Upcoming } from './nights';
+import { favoriteOf, loadFavorites, saveFavorites } from './favorites';
+import type { Favorite } from './favorites';
+import { TIER_TITLES, addDays, berlinToday, formatDay, loadNight, loadUpcoming, prioritize } from './nights';
+import type { Night, Tier } from './nights';
+import { TeamsView } from './TeamsView';
+import type { Game } from './types';
 import type { League } from './types';
 import { LEAGUES } from './types';
 
 type Filter = 'Alle' | League;
-type Tab = 'night' | 'tonight';
+type Tab = 'night' | 'tonight' | 'teams';
 
 const REVEALED_KEY = 'revealed:v1';
 
@@ -25,6 +28,11 @@ export function App() {
   const [date, setDate] = useState(today);
   const [filter, setFilter] = useState<Filter>('Alle');
   const [revealed, setRevealed] = useState(readRevealed);
+  const [favorites, setFavorites] = useState(loadFavorites);
+  const updateFavorites = (next: Favorite[]) => {
+    setFavorites(next);
+    saveFavorites(next);
+  };
 
   const toggle = (id: string) => () => {
     const next = new Set(revealed);
@@ -36,18 +44,19 @@ export function App() {
   return (
     <div class="app">
       <div class="glow" aria-hidden="true" />
-      {tab === 'night'
-        ? <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} />
-        : <TonightView filter={filter} setFilter={setFilter} />}
+      {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} />}
+      {tab === 'tonight' && <TonightView filter={filter} setFilter={setFilter} favorites={favorites} />}
+      {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} />}
       <nav class="nav" aria-label="Hauptmenü">
         <button type="button" aria-current={tab === 'night' ? 'page' : undefined} onClick={() => setTab('night')}>{Icon.moon} Letzte Nacht</button>
         <button type="button" aria-current={tab === 'tonight' ? 'page' : undefined} onClick={() => setTab('tonight')}>{Icon.clock} Heute Abend</button>
+        <button type="button" aria-current={tab === 'teams' ? 'page' : undefined} onClick={() => setTab('teams')}>{Icon.star} Meine Teams</button>
       </nav>
     </div>
   );
 }
 
-function FilterBar({ filter, setFilter }: { filter: Filter; setFilter: (f: Filter) => void }) {
+export function FilterBar({ filter, setFilter }: { filter: Filter; setFilter: (f: Filter) => void }) {
   return (
     <div class="filter" role="group" aria-label="Liga filtern">
       {(['Alle', ...LEAGUES] as Filter[]).map((f) => (
@@ -57,7 +66,7 @@ function FilterBar({ filter, setFilter }: { filter: Filter; setFilter: (f: Filte
   );
 }
 
-function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
+export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
   const [state, setState] = useState<{ data?: T; error?: string; loading: boolean }>({ loading: true });
   useEffect(() => {
     let alive = true;
@@ -74,9 +83,9 @@ function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
 function NightView(props: {
   date: string; today: string; setDate: (d: string) => void;
   filter: Filter; setFilter: (f: Filter) => void;
-  revealed: Set<string>; toggle: (id: string) => () => void;
+  revealed: Set<string>; toggle: (id: string) => () => void; favorites: Favorite[];
 }) {
-  const { date, today, setDate, filter, setFilter, revealed, toggle } = props;
+  const { date, today, setDate, filter, setFilter, revealed, toggle, favorites } = props;
   const { data, error, loading } = useLoad<Night>(() => loadNight(date), [date]);
   const [showRest, setShowRest] = useState(false);
   useEffect(() => setShowRest(false), [date]);
@@ -86,17 +95,18 @@ function NightView(props: {
     const shown = all.filter((g) => filter === 'Alle' || g.game.league === filter);
     const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => a.rating.sortKey - b.rating.sortKey);
     const hero = hotSorted.find((g) => g.rating.level === 5) ?? null;
-    const favs = FAVORITES
+    const isFav = (g: { game: Game }) => favoriteOf(g.game, favorites) !== null;
+    const favs = favorites
       .filter((f) => filter === 'Alle' || f.league === filter)
-      .map((f) => ({ fav: f, item: shown.find((g) => g.favorite === f.label) }));
-    const tips = hotSorted.filter((g) => !g.favorite && g !== hero);
-    const rest = shown.filter((g) => !g.favorite && !g.rating.hot);
+      .map((f) => ({ fav: f, item: shown.find((g) => favoriteOf(g.game, [f])) }));
+    const tips = hotSorted.filter((g) => !isFav(g) && g !== hero);
+    const rest = shown.filter((g) => !isFav(g) && !g.rating.hot);
     return {
       hero, favs, tips, rest,
       played: all.length,
       hot: all.filter((g) => g.rating.hot).length,
     };
-  }, [data, filter]);
+  }, [data, filter, favorites]);
 
   const isToday = date === today;
   return (
@@ -155,15 +165,16 @@ function NightView(props: {
   );
 }
 
-function TonightView({ filter, setFilter }: { filter: Filter; setFilter: (f: Filter) => void }) {
-  const { data, error, loading } = useLoad<{ games: Upcoming[]; failed: string[] }>(() => loadUpcoming(), []);
+function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilter: (f: Filter) => void; favorites: Favorite[] }) {
+  const { data, error, loading } = useLoad<{ games: Game[]; failed: string[] }>(() => loadUpcoming(), []);
+  const all = useMemo(() => prioritize(data?.games ?? [], favorites), [data, favorites]);
   const groups = useMemo(() => {
-    const shown = (data?.games ?? []).filter((u) => filter === 'Alle' || u.game.league === filter);
+    const shown = all.filter((u) => filter === 'Alle' || u.game.league === filter);
     const order: Tier[] = ['favorite', 'contender', 'rivalry', 'other'];
     return order.map((tier) => ({ tier, items: shown.filter((u) => u.tier === tier) })).filter((g) => g.items.length);
-  }, [data, filter]);
-  const total = data?.games.length ?? 0;
-  const highlights = data?.games.filter((u) => u.tier !== 'other').length ?? 0;
+  }, [all, filter]);
+  const total = all.length;
+  const highlights = all.filter((u) => u.tier !== 'other').length;
 
   return (
     <>
@@ -176,7 +187,7 @@ function TonightView({ filter, setFilter }: { filter: Filter; setFilter: (f: Fil
         <div class="stats">
           <div class="stat"><b>{loading ? '–' : total}</b><small>Spiele</small></div>
           <div class="stat"><b class="hot">{loading ? '–' : highlights}</b><small>Highlights</small></div>
-          <div class="stat"><b>{loading || !data?.games[0] ? '–' : new Date(data.games.reduce((m, u) => (u.game.start < m ? u.game.start : m), data.games[0].game.start)).toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' })}</b><small>Erstes Spiel</small></div>
+          <div class="stat"><b>{loading || !data?.games[0] ? '–' : new Date(data.games[0].start).toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' })}</b><small>Erstes Spiel</small></div>
         </div>
       </header>
       <FilterBar filter={filter} setFilter={setFilter} />

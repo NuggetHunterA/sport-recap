@@ -1,6 +1,8 @@
 // Zeitfenster („letzte Nacht“, „heute Abend“) und Priorisierung.
-import { CONTENDER_MIN_GAMES, CONTENDER_WIN_PCT, FAVORITES } from './config';
+import { CONTENDER_MIN_GAMES, CONTENDER_WIN_PCT } from './config';
 import { scoreboards, withPlays } from './espn';
+import { favoriteOf } from './favorites';
+import type { Favorite } from './favorites';
 import { isRivalry, rate } from './rating';
 import type { Game, Rating } from './types';
 
@@ -35,13 +37,7 @@ export function formatDay(date: string): string {
   });
 }
 
-export function favoriteOf(game: Game): string | null {
-  const f = FAVORITES.find((f) => f.league === game.league
-    && (game.away.name.includes(f.match) || game.home.name.includes(f.match)));
-  return f ? f.label : null;
-}
-
-export interface RatedGame { game: Game; rating: Rating; favorite: string | null }
+export interface RatedGame { game: Game; rating: Rating }
 
 export interface Night {
   date: string;
@@ -49,7 +45,7 @@ export interface Night {
   failed: string[];
 }
 
-const cacheKey = (date: string) => `night:v1:${date}`;
+const cacheKey = (date: string) => `night:v2:${date}`;
 
 /**
  * Beendete Spiele der Nacht vor `date`: Start zwischen Vortag 12:00 und `date` 12:00 Berliner Zeit.
@@ -71,7 +67,7 @@ export async function loadNight(date: string, now = new Date()): Promise<Night> 
   const finished = await Promise.all(inWindow.filter((g) => g.state === 'post').map(withPlays));
   const night: Night = {
     date,
-    games: finished.map((game) => ({ game, rating: rate(game), favorite: favoriteOf(game) })),
+    games: finished.map((game) => ({ game, rating: rate(game) })),
     failed,
   };
 
@@ -107,29 +103,34 @@ export function isContenderMatchup(game: Game): boolean {
   return a !== null && b !== null && a >= CONTENDER_WIN_PCT && b >= CONTENDER_WIN_PCT;
 }
 
-export function tierOf(game: Game): Tier {
-  if (favoriteOf(game)) return 'favorite';
+export function tierOf(game: Game, favs: Favorite[]): Tier {
+  if (favoriteOf(game, favs)) return 'favorite';
   if (isContenderMatchup(game)) return 'contender';
   if (isRivalry(game.league, game.away.name, game.home.name)) return 'rivalry';
   return 'other';
 }
 
-export interface Upcoming { game: Game; tier: Tier; favorite: string | null }
+export interface Upcoming { game: Game; tier: Tier }
 
-/** Alle Spiele, die in den nächsten 24 Stunden beginnen, nach Interesse und Uhrzeit sortiert. */
-export async function loadUpcoming(now = new Date()): Promise<{ games: Upcoming[]; failed: string[] }> {
+/** Alle Spiele, die in den nächsten 24 Stunden beginnen, nach Uhrzeit sortiert. */
+export async function loadUpcoming(now = new Date()): Promise<{ games: Game[]; failed: string[] }> {
   const today = berlinToday(now);
   const { games, failed } = await scoreboards([addDays(today, -1), today, addDays(today, 1)]);
   const until = now.getTime() + 24 * 3600 * 1000;
-  const order: Tier[] = ['favorite', 'contender', 'rivalry', 'other'];
   const list = games
     .filter((g) => g.state === 'pre')
     .filter((g) => {
       const t = new Date(g.start).getTime();
       return t >= now.getTime() - 15 * 60 * 1000 && t <= until;
     })
-    .map((game) => ({ game, tier: tierOf(game), favorite: favoriteOf(game) }))
-    .sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier)
-      || new Date(a.game.start).getTime() - new Date(b.game.start).getTime());
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   return { games: list, failed };
+}
+
+/** Nach Interesse gruppiert: Lieblingsteams, Top-Matchups, Rivalitäten, Rest. */
+export function prioritize(games: Game[], favs: Favorite[]): Upcoming[] {
+  const order: Tier[] = ['favorite', 'contender', 'rivalry', 'other'];
+  return games
+    .map((game) => ({ game, tier: tierOf(game, favs) }))
+    .sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
 }
