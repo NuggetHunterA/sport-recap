@@ -29,8 +29,9 @@ function logoCandidates(logo?: string): string[] {
   return dark === logo ? [logo] : [dark, logo];
 }
 
-export function Badge({ team, size }: { team: Pick<Team, 'color' | 'logo' | 'abbr'>; size: number }) {
-  const candidates = logoCandidates(team.logo);
+/** `light`: Logo für hellen Hintergrund (Trikotkarte), sonst zuerst die Variante für dunklen */
+export function Badge({ team, size, light }: { team: Pick<Team, 'color' | 'logo' | 'abbr'>; size: number; light?: boolean }) {
+  const candidates = light && team.logo ? [team.logo] : logoCandidates(team.logo);
   const [attempt, setAttempt] = useState(0);
   const src = candidates[attempt];
   return (
@@ -92,21 +93,27 @@ function label(game: Game): string {
 
 export function Hero({ item, open, toggle, vote, onVote, onBox }: CardProps) {
   const { game, rating } = item;
-  const bg = `linear-gradient(125deg, ${game.away.color} 0%, ${game.away.color} 48%, ${game.home.color} 52%, ${game.home.color} 100%)`;
+  // Trikotfarben: Hauptfarbe und Zweitfarbe je Team
+  const colors = (t: Team) => ({ '--c': t.color, '--c2': t.alt ?? '#ffffff' });
   return (
     <section class="section" aria-label="Spiel der Nacht">
       <div class="kicker">{Icon.flame} Spiel der Nacht</div>
-      <article class={`hero${open && onBox ? ' tappable' : ''}`} style={{ background: bg }} onClick={open ? openBox(onBox) : undefined}>
-        <div class="hero-league" aria-hidden="true">{game.league}</div>
+      <article class={`hero${open && onBox ? ' tappable' : ''}`} onClick={open ? openBox(onBox) : undefined}>
+        <div class="jersey" aria-hidden="true">
+          <span style={colors(game.away)} /><span style={colors(game.home)} />
+        </div>
         <div class="hero-body">
           <div class="hero-top">
             <span class="tag">{label(game)}</span>
             <span class="reason-chip">{rating.reason}</span>
           </div>
           <div class="versus">
-            <div class="side"><Badge team={game.away} size={62} /><span class="side-name">{game.away.short}</span></div>
+            <div class="side" style={colors(game.away)}><span class="disc"><Badge team={game.away} size={60} light /></span><span class="side-name">{game.away.short}</span></div>
             <div class="big-score"><Score game={game} open={open} /></div>
-            <div class="side"><Badge team={game.home} size={62} /><span class="side-name">{game.home.short}</span></div>
+            <div class="side" style={colors(game.home)}><span class="disc"><Badge team={game.home} size={60} light /></span><span class="side-name">{game.home.short}</span></div>
+          </div>
+          <div class="jersey-stripes" aria-hidden="true">
+            <span style={colors(game.away)} /><span style={colors(game.home)} />
           </div>
           <div class="hero-foot">
             <div><div class="meter-label">Spannung</div><Meter level={rating.level} big /></div>

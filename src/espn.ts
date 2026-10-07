@@ -35,6 +35,7 @@ function team(c: any): Team {
     short: t.shortDisplayName ?? t.name ?? t.abbreviation ?? '?',
     abbr: t.abbreviation ?? '?',
     color: t.color ? `#${t.color}` : '#2A313C',
+    alt: t.alternateColor ? `#${t.alternateColor}` : undefined,
     logo: t.logo,
     record: c?.records?.[0]?.summary,
     score: parseInt(c?.score ?? '0', 10) || 0,

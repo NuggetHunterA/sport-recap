@@ -9,6 +9,8 @@ export interface Team {
   short: string; // "Padres"
   abbr: string; // "SD"
   color: string; // "#2F241D"
+  /** Zweitfarbe für die Trikotstreifen, z. B. "#FFC425" */
+  alt?: string;
   logo?: string;
   record?: string; // "90-72"
   score: number;
