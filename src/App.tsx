@@ -159,9 +159,10 @@ function NightView(props: {
             {view.favs.length > 0 && (
               <section class="section">
                 <div class="section-head"><h2>Meine Teams</h2><span class="count">{view.favs.length} Teams</span></div>
-                {view.favs.map(({ fav, item }) => item
-                  ? <GameCard key={fav.label} {...card(item)} />
-                  : <NoGameCard key={fav.label} name={fav.label} league={fav.league} />)}
+                {view.favs.map(({ fav, item }) => item && <GameCard key={fav.label} {...card(item)} />)}
+                {view.favs.some(({ item }) => !item) && (
+                  <NoGameCard favs={view.favs.filter(({ item }) => !item).map(({ fav }) => fav)} />
+                )}
               </section>
             )}
             {view.tips.length > 0 && (

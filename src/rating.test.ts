@@ -174,6 +174,11 @@ describe('verbesserte Bewertung', () => {
     expect(rate(nh).reason).toBe('Historischer Abend');
     expect(rate(game('NBA', ['A', 130], ['B', 100], [], { leaders: [{ stat: 'points', value: 52 }] })).level).toBeGreaterThanOrEqual(4);
   });
+  it('Preseason bekommt höchstens 3 Balken, auch bei Overtime', () => {
+    const r = rate(game('NBA', ['A', 120], ['B', 118], [p(108, 108, 4, 0), p(120, 118, 5, 0)], { season: 'preseason' }));
+    expect(r.level).toBe(3);
+    expect(r.hot).toBe(true);
+  });
   it('Duell zweier starker Teams gibt einen Bonus', () => {
     const base = game('NBA', ['A', 110], ['B', 101]);
     const strong = game('NBA', ['A', 110], ['B', 101]);
