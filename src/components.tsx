@@ -23,7 +23,7 @@ export const Icon = {
 };
 
 /** ESPN-Logo in der Variante für dunkle Hintergründe, mit dem normalen Logo als Ersatz. */
-export function logoCandidates(logo?: string): string[] {
+function logoCandidates(logo?: string): string[] {
   if (!logo) return [];
   const dark = logo.replace('/500/scoreboard/', '/500/').replace('/500/', '/500-dark/');
   return dark === logo ? [logo] : [dark, logo];
@@ -42,7 +42,7 @@ export function Badge({ team, size }: { team: Pick<Team, 'color' | 'logo' | 'abb
   );
 }
 
-export function VoteButtons({ vote, onVote }: { vote?: 1 | -1; onVote: (v: 1 | -1) => void }) {
+function VoteButtons({ vote, onVote }: { vote?: 1 | -1; onVote: (v: 1 | -1) => void }) {
   return (
     <div class="vote" role="group" aria-label="Hat sich das Spiel gelohnt?">
       <span>Gelohnt?</span>
@@ -71,7 +71,7 @@ function openBox(onBox?: () => void) {
   } : undefined;
 }
 
-export function Meter({ level, big }: { level: number; big?: boolean }) {
+function Meter({ level, big }: { level: number; big?: boolean }) {
   return (
     <span class={`meter${big ? ' big' : ''}${level >= 4 ? ' hot' : ''}`} role="img" aria-label={`Spannung ${level} von 5`}>
       {[1, 2, 3, 4, 5].map((i) => <i key={i} class={i <= level ? 'on' : ''} />)}

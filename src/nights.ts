@@ -5,7 +5,7 @@ import type { Favorite } from './favorites';
 import { bothStrong, isRivalry, rate } from './rating';
 import type { Game, Rating } from './types';
 
-export const TZ = 'Europe/Berlin';
+const TZ = 'Europe/Berlin';
 
 /** Heutiges Datum in Berlin als YYYY-MM-DD. */
 export function berlinToday(now = new Date()): string {
@@ -91,7 +91,7 @@ export const TIER_TITLES: Record<Tier, string> = {
   other: 'Weitere Spiele',
 };
 
-export function isContenderMatchup(game: Game): boolean {
+function isContenderMatchup(game: Game): boolean {
   return game.season === 'playoff' || bothStrong(game);
 }
 

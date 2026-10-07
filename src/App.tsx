@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { GameCard, Hero, Icon, NoGameCard, Skeletons, UpcomingCard } from './components';
 import { favoriteOf, loadFavorites, saveFavorites } from './favorites';
 import type { Favorite } from './favorites';
-import { TIER_TITLES, addDays, berlinToday, formatDay, loadNight, loadUpcoming, prioritize } from './nights';
+import { TIER_TITLES, addDays, berlinToday, formatDay, formatTime, loadNight, loadUpcoming, prioritize } from './nights';
 import type { Night, Tier } from './nights';
 import { TeamsView } from './TeamsView';
 import { BoxSheet, canShowBox } from './BoxSheet';
@@ -79,7 +79,7 @@ export function FilterBar({ filter, setFilter }: { filter: Filter; setFilter: (f
   );
 }
 
-export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
+function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
   const [state, setState] = useState<{ data?: T; error?: string; loading: boolean }>({ loading: true });
   useEffect(() => {
     let alive = true;
@@ -209,7 +209,8 @@ function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilt
   }, [shown]);
   const total = shown.length;
   const highlights = shown.filter((u) => u.tier !== 'other').length;
-  const first = shown.reduce<Game | null>((min, u) => (!min || u.game.start < min.start ? u.game : min), null);
+  // loadUpcoming liefert die Spiele nach Uhrzeit sortiert
+  const first = data?.games.find((g) => filter === 'Alle' || g.league === filter);
 
   return (
     <>
@@ -222,7 +223,7 @@ function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilt
         <div class="stats">
           <div class="stat"><b>{loading ? '–' : total}</b><small>Spiele</small></div>
           <div class="stat"><b class="hot">{loading ? '–' : highlights}</b><small>Highlights</small></div>
-          <div class="stat"><b>{loading || !first ? '–' : new Date(first.start).toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' })}</b><small>Erstes Spiel</small></div>
+          <div class="stat"><b>{loading || !first ? '–' : formatTime(first.start)}</b><small>Erstes Spiel</small></div>
         </div>
       </header>
       <FilterBar filter={filter} setFilter={setFilter} />

@@ -6,7 +6,7 @@ import type { Game } from './types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export interface Column {
+interface Column {
   label: string;
   /** Mögliche Bezeichnungen bei ESPN (labels, keys oder names) */
   match: string[];
@@ -109,9 +109,7 @@ function table(group: any, columns: Column[], title: string): Table | null {
       name: a?.athlete?.shortName ?? a?.athlete?.displayName ?? '?',
       note: a?.athlete?.position?.abbreviation,
       stats: idx.map((i) => (i >= 0 ? String(a.stats[i] ?? '–') : '–')),
-    }))
-    // NBA: Spieler ohne Einsatzminuten weglassen
-    .filter((r: Table['rows'][number]) => !(title === 'Spieler' && /^(0|--|)$/.test(r.stats[0])));
+    }));
   return rows.length ? { title, columns: columns.map((c) => c.label), rows } : null;
 }
 

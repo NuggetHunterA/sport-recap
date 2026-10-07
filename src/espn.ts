@@ -98,7 +98,7 @@ export function parsePlays(summary: any): ScoringPlay[] {
 }
 
 /** YYYYMMDD für die ESPN-API. */
-export function ymd(d: string): string {
+function ymd(d: string): string {
   return d.replaceAll('-', '');
 }
 

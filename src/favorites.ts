@@ -4,7 +4,7 @@ import type { Game, League } from './types';
 
 export interface Favorite {
   league: League;
-  /** Text, der im ESPN-Teamnamen vorkommen muss (bei Auswahl in der App der volle Name). */
+  /** Text, der im ESPN-Teamnamen vorkommen muss (bei Auswahl in der App der Spitzname). */
   match: string;
   /** Anzeigename, z. B. „Padres“ */
   label: string;
