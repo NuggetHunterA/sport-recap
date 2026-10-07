@@ -3,6 +3,7 @@ import { FilterBar } from './App';
 import { Badge, Icon } from './components';
 import { FAVORITES } from './config';
 import { matches } from './favorites';
+import { setupPush } from './push';
 import type { Favorite } from './favorites';
 import type { Vote } from './votes';
 import type { League } from './types';
@@ -20,6 +21,16 @@ export function TeamsView({ favorites, setFavorites, votes }: { favorites: Favor
       await navigator.clipboard.writeText(JSON.stringify(voteList, null, 1));
       setCopied(true);
     } catch { /* Zwischenablage gesperrt */ }
+  };
+  const [push, setPush] = useState<{ code?: string; error?: string }>({});
+  const setup = async () => {
+    try {
+      const code = await setupPush(favorites);
+      setPush({ code });
+      await navigator.clipboard.writeText(code).catch(() => { /* Code steht im Feld */ });
+    } catch (e) {
+      setPush({ error: `Einrichtung fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}` });
+    }
   };
   const [filter, setFilter] = useState<Filter>('Alle');
   const data = TEAMS;
@@ -82,6 +93,13 @@ export function TeamsView({ favorites, setFavorites, votes }: { favorites: Favor
           <div class="section-head"><h2>Deine Urteile</h2><span class="count">{voteList.length} Spiele</span></div>
           <p class="lead">Nach dem Aufdecken kannst du angeben, ob sich ein Spiel gelohnt hat. Kopiere die Liste und schick sie Claude, um die Bewertung nachzuschärfen.</p>
           <button type="button" class="more" disabled={!voteList.length} onClick={copyVotes}>{copied ? 'Kopiert' : 'Urteile kopieren'}</button>
+        </section>
+        <section class="section">
+          <div class="section-head"><h2>Benachrichtigungen</h2></div>
+          <p class="lead">Morgens um 8 Uhr deine Teams und ein Top-Tipp, nachmittags um 15 Uhr nur, wenn vor 23 Uhr etwas Wichtiges startet. Nie mit Ergebnis. Nach dem Einrichten den kopierten Code auf GitHub unter Settings → Secrets and variables → Actions als Secret <b>PUSH_CONFIG</b> speichern. Ändern sich deine Teams, den Code neu kopieren.</p>
+          <button type="button" class="more" onClick={setup}>{push.code ? 'Code kopiert' : 'Benachrichtigungen einrichten'}</button>
+          {push.code && <textarea class="push-code" readOnly value={push.code} onFocus={(e) => e.currentTarget.select()} />}
+          {push.error && <div class="error">{push.error}</div>}
         </section>
       </main>
     </>

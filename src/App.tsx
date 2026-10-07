@@ -28,7 +28,8 @@ function readRevealed(): Set<string> {
 
 export function App() {
   const today = berlinToday();
-  const [tab, setTab] = useState<Tab>('night');
+  // ?tab=tonight öffnet „Heute Abend“ (Link aus der Nachmittags-Benachrichtigung)
+  const [tab, setTab] = useState<Tab>(new URLSearchParams(location.search).get('tab') === 'tonight' ? 'tonight' : 'night');
   const [date, setDate] = useState(today);
   const [filter, setFilter] = useState<Filter>('Alle');
   const [revealed, setRevealed] = useState(readRevealed);
