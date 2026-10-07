@@ -91,7 +91,8 @@ describe('ESPN-Daten', () => {
     expect(g.home.score).toBe(7);
     expect(g.away.color).toBe('#ce1141');
     expect(g.note).toBe('NLDS - Game 2');
-    expect(tierOf(g)).toBe('contender');
+    expect(tierOf(g, [])).toBe('contender');
+    expect(tierOf(g, [{ league: 'MLB', match: 'Braves', label: 'Braves' }])).toBe('favorite');
   });
   it('liest Scoring-Plays aus plays und scoringPlays', () => {
     expect(parsePlays({ plays: [{ scoringPlay: false }, { scoringPlay: true, awayScore: 2, homeScore: 0, period: { number: 4 }, clock: { displayValue: '2:31' } }] }))
@@ -105,5 +106,12 @@ describe('Zeitfenster', () => {
     expect(berlinTime('2026-10-07', 12).toISOString()).toBe('2026-10-07T10:00:00.000Z');
     expect(berlinTime('2026-12-07', 12).toISOString()).toBe('2026-12-07T11:00:00.000Z');
     expect(addDays('2026-10-01', -1)).toBe('2026-09-30');
+  });
+});
+
+describe('NFL-Rivalitäten', () => {
+  it('erkennt Chiefs gegen Raiders unabhängig vom Heimteam', () => {
+    expect(rate(game('NFL', ['Las Vegas Raiders', 20], ['Kansas City Chiefs', 27])).rivalry).toBe(true);
+    expect(rate(game('NFL', ['Las Vegas Raiders', 20], ['Kansas City Chiefs', 27])).hot).toBe(true);
   });
 });

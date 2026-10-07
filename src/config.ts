@@ -24,7 +24,11 @@ export const RIVALRIES: Record<League, [string, string][]> = {
     ['Knicks', 'Pacers'], ['Celtics', 'Heat'], ['Warriors', 'Cavaliers'], ['Bulls', 'Knicks'],
     ['Lakers', 'Warriors'],
   ],
-  NFL: [],
+  NFL: [
+    ['Packers', 'Bears'], ['Cowboys', 'Eagles'], ['Steelers', 'Ravens'], ['Cowboys', '49ers'],
+    ['Chiefs', 'Raiders'], ['Giants', 'Eagles'], ['Patriots', 'Jets'], ['Falcons', 'Saints'],
+    ['Chiefs', 'Bills'], ['Patriots', 'Colts'], ['49ers', 'Seahawks'],
+  ],
 };
 
 /** Ab dieser Siegquote gilt ein Team als stark (für „Heute Abend“). */
