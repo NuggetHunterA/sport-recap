@@ -12,10 +12,32 @@ const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-async function getJson(url: string): Promise<any> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`ESPN ${res.status}`);
-  return res.json();
+const MINUTE = 60 * 1000;
+const memory = new Map<string, { at: number; data: Promise<any> }>();
+
+/** Holt JSON und merkt es sich `ttl` lang, damit Tabwechsel ESPN nicht erneut abfragen. */
+async function getJson(url: string, ttl = 5 * MINUTE): Promise<any> {
+  const hit = memory.get(url);
+  if (hit && Date.now() - hit.at < ttl) return hit.data;
+  const data = fetch(url).then((res) => {
+    if (!res.ok) throw new Error(`ESPN ${res.status}`);
+    return res.json();
+  });
+  memory.set(url, { at: Date.now(), data });
+  data.catch(() => memory.delete(url));
+  return data;
+}
+
+/** Wie getJson, aber zusätzlich im Browser gespeichert (überlebt Neustarts). */
+async function getStoredJson(url: string, ttl: number): Promise<any> {
+  const key = `espn:${url}`;
+  try {
+    const stored = JSON.parse(localStorage.getItem(key) ?? 'null');
+    if (stored && Date.now() - stored.at < ttl) return stored.data;
+  } catch { /* neu laden */ }
+  const data = await getJson(url, ttl);
+  try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), data })); } catch { /* voll */ }
+  return data;
 }
 
 function team(c: any): Team {
@@ -85,7 +107,8 @@ export async function scoreboard(league: League, date: string): Promise<Game[]> 
 
 export async function withPlays(game: Game): Promise<Game> {
   try {
-    const s = await getJson(`${BASE}/${PATHS[game.league]}/summary?event=${game.id}`);
+    // Beendete Spiele ändern sich nicht mehr
+    const s = await getJson(`${BASE}/${PATHS[game.league]}/summary?event=${game.id}`, 24 * 60 * MINUTE);
     return { ...game, plays: parsePlays(s) };
   } catch {
     // Ohne Spielverlauf wird nur nach Endabstand bewertet, wie in HA
@@ -122,7 +145,7 @@ export interface TeamInfo {
 
 /** Alle Teams einer Liga, alphabetisch. */
 export async function teams(league: League): Promise<TeamInfo[]> {
-  const data = await getJson(`${BASE}/${PATHS[league]}/teams`);
+  const data = await getStoredJson(`${BASE}/${PATHS[league]}/teams`, 7 * 24 * 60 * MINUTE);
   const list: any[] = data?.sports?.[0]?.leagues?.[0]?.teams ?? [];
   return list
     .map(({ team: t }) => ({

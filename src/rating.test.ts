@@ -115,3 +115,19 @@ describe('NFL-Rivalitäten', () => {
     expect(rate(game('NFL', ['Las Vegas Raiders', 20], ['Kansas City Chiefs', 27])).hot).toBe(true);
   });
 });
+
+describe('Zwischenspeicher', () => {
+  it('fragt dasselbe Scoreboard innerhalb von 5 Minuten nur einmal ab', async () => {
+    const { scoreboard } = await import('./espn');
+    let calls = 0;
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () => { calls++; return new Response(JSON.stringify({ events: [] })); }) as typeof fetch;
+    try {
+      await scoreboard('NBA', '2026-10-01');
+      await scoreboard('NBA', '2026-10-01');
+      expect(calls).toBe(1);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+});
