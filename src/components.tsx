@@ -7,6 +7,8 @@ import type { Favorite } from './favorites';
 import { TEAMS } from './teams';
 
 export const Icon = {
+  close: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>,
+  table: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M9 10v10" /></svg>,
   shield: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z" /></svg>,
   flame: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 1 1.5 2 2 3 2-.5-2.5-1-4.5 0-7z" /></svg>,
   eye: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>,
@@ -50,6 +52,25 @@ export function VoteButtons({ vote, onVote }: { vote?: 1 | -1; onVote: (v: 1 | -
   );
 }
 
+type CardProps = { item: RatedGame; open: boolean; toggle: () => void; vote?: 1 | -1; onVote: (v: 1 | -1) => void; onBox?: () => void };
+
+/** Fußzeile einer aufgedeckten Karte: Boxscore und Daumen */
+function CardFoot({ vote, onVote, onBox }: Pick<CardProps, 'vote' | 'onVote' | 'onBox'>) {
+  return (
+    <div class="card-foot">
+      {onBox && <button type="button" class="box-btn" onClick={onBox}>{Icon.table} Boxscore</button>}
+      <VoteButtons vote={vote} onVote={onVote} />
+    </div>
+  );
+}
+
+/** Tippen auf eine aufgedeckte Karte öffnet den Boxscore, außer auf Knöpfe */
+function openBox(onBox?: () => void) {
+  return onBox ? (e: MouseEvent) => {
+    if (!(e.target as HTMLElement).closest('button')) onBox();
+  } : undefined;
+}
+
 export function Meter({ level, big }: { level: number; big?: boolean }) {
   return (
     <span class={`meter${big ? ' big' : ''}${level >= 4 ? ' hot' : ''}`} role="img" aria-label={`Spannung ${level} von 5`}>
@@ -69,13 +90,13 @@ function label(game: Game): string {
   return game.season === 'preseason' ? 'Preseason' : game.season === 'playoff' ? 'Playoffs' : 'Regular Season';
 }
 
-export function Hero({ item, open, toggle, vote, onVote }: { item: RatedGame; open: boolean; toggle: () => void; vote?: 1 | -1; onVote: (v: 1 | -1) => void }) {
+export function Hero({ item, open, toggle, vote, onVote, onBox }: CardProps) {
   const { game, rating } = item;
   const bg = `linear-gradient(125deg, ${game.away.color} 0%, ${game.away.color} 48%, ${game.home.color} 52%, ${game.home.color} 100%)`;
   return (
     <section class="section" aria-label="Spiel der Nacht">
       <div class="kicker">{Icon.flame} Spiel der Nacht</div>
-      <article class="hero" style={{ background: bg }}>
+      <article class={`hero${open && onBox ? ' tappable' : ''}`} style={{ background: bg }} onClick={open ? openBox(onBox) : undefined}>
         <div class="hero-league" aria-hidden="true">{game.league}</div>
         <div class="hero-body">
           <div class="hero-top">
@@ -91,16 +112,16 @@ export function Hero({ item, open, toggle, vote, onVote }: { item: RatedGame; op
             <div><div class="meter-label">Spannung</div><Meter level={rating.level} big /></div>
             <button type="button" class="glass" onClick={toggle}>{Icon.eye} {open ? 'Verbergen' : 'Aufdecken'}</button>
           </div>
-          {open && <VoteButtons vote={vote} onVote={onVote} />}
+          {open && <CardFoot vote={vote} onVote={onVote} onBox={onBox} />}
         </div>
       </article>
     </section>
   );
 }
 
-function Shell({ away, home, hot, children }: { away: string; home: string; hot: boolean; children: ComponentChildren }) {
+function Shell({ away, home, hot, children, onClick }: { away: string; home: string; hot: boolean; children: ComponentChildren; onClick?: (e: MouseEvent) => void }) {
   return (
-    <article class="card">
+    <article class={`card${onClick ? ' tappable' : ''}`} onClick={onClick}>
       <div class="stripe" aria-hidden="true" style={{ background: `linear-gradient(180deg, ${away}, ${home})` }} />
       {hot && <div class="wash" aria-hidden="true" style={{ background: `radial-gradient(120% 90% at 0% 0%, ${away}33, transparent 60%)` }} />}
       {children}
@@ -108,10 +129,10 @@ function Shell({ away, home, hot, children }: { away: string; home: string; hot:
   );
 }
 
-export function GameCard({ item, open, toggle, vote, onVote }: { item: RatedGame; open: boolean; toggle: () => void; vote?: 1 | -1; onVote: (v: 1 | -1) => void }) {
+export function GameCard({ item, open, toggle, vote, onVote, onBox }: CardProps) {
   const { game, rating } = item;
   return (
-    <Shell away={game.away.color} home={game.home.color} hot={rating.hot}>
+    <Shell away={game.away.color} home={game.home.color} hot={rating.hot} onClick={open ? openBox(onBox) : undefined}>
       <div class="card-top">
         <div class="meta"><span class="league">{game.league}</span><span>{label(game)}</span></div>
         <Meter level={rating.level} />
@@ -127,7 +148,7 @@ export function GameCard({ item, open, toggle, vote, onVote }: { item: RatedGame
           <Score game={game} open={open} />
         </button>
       </div>
-      {open && <VoteButtons vote={vote} onVote={onVote} />}
+      {open && <CardFoot vote={vote} onVote={onVote} onBox={onBox} />}
     </Shell>
   );
 }

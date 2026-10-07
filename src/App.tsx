@@ -5,6 +5,7 @@ import type { Favorite } from './favorites';
 import { TIER_TITLES, addDays, berlinToday, formatDay, loadNight, loadUpcoming, prioritize } from './nights';
 import type { Night, Tier } from './nights';
 import { TeamsView } from './TeamsView';
+import { BoxSheet, canShowBox } from './BoxSheet';
 import { loadVotes, makeVote, saveVotes } from './votes';
 import type { Vote } from './votes';
 import type { RatedGame } from './nights';
@@ -105,10 +106,14 @@ function NightView(props: {
     toggle: toggle(item.game.id),
     vote: votes[item.game.id]?.vote,
     onVote: (v: 1 | -1) => castVote(item, v),
+    onBox: canShowBox(item.game) ? () => setBox(item.game) : undefined,
   });
+  const [box, setBox] = useState<Game | null>(null);
   const { data, error, loading } = useLoad<Night>(() => loadNight(date), [date]);
   const [showRest, setShowRest] = useState(false);
   useEffect(() => setShowRest(false), [date]);
+  // Tipp auf „Sehenswert“ blendet alle übrigen Spiele aus
+  const [hotOnly, setHotOnly] = useState(false);
 
   const view = useMemo(() => {
     const all = data?.games ?? [];
@@ -119,15 +124,17 @@ function NightView(props: {
     const isFav = (g: { game: Game }) => favoriteOf(g.game, favorites) !== null;
     const favs = favorites
       .filter((f) => filter === 'Alle' || f.league === filter)
-      .map((f) => ({ fav: f, item: shown.find((g) => favoriteOf(g.game, [f])) }));
+      .map((f) => ({ fav: f, item: shown.find((g) => favoriteOf(g.game, [f])) }))
+      .filter(({ item }) => !hotOnly || item?.rating.hot);
     const tips = hotSorted.filter((g) => !isFav(g) && g !== hero);
-    const rest = shown.filter((g) => !isFav(g) && !g.rating.hot);
+    const rest = hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot);
+    // Kennzahlen folgen dem Ligafilter
     return {
       hero, favs, tips, rest,
-      played: all.length,
-      hot: all.filter((g) => g.rating.hot).length,
+      played: shown.length,
+      hot: hotSorted.length,
     };
-  }, [data, filter, favorites]);
+  }, [data, filter, favorites, hotOnly]);
 
   const isToday = date === today;
   return (
@@ -144,7 +151,9 @@ function NightView(props: {
         <h1>{isToday ? <>Letzte<br /><span>Nacht</span></> : <>Archiv<br /><span>{formatDay(date).split(',')[0].replace('.', '')}</span></>}</h1>
         <div class="stats">
           <div class="stat"><b>{loading ? '–' : view.played}</b><small>Spiele</small></div>
-          <div class="stat"><b class="hot">{loading ? '–' : view.hot}</b><small>Sehenswert</small></div>
+          <button type="button" class="stat" aria-pressed={hotOnly} aria-label="Nur sehenswerte Spiele zeigen" onClick={() => setHotOnly(!hotOnly)}>
+            <b class="hot">{loading ? '–' : view.hot}</b><small>Sehenswert</small>
+          </button>
           <div class="stat"><b>{loading ? '–' : view.played - view.hot}</b><small>Verzichtbar</small></div>
         </div>
       </header>
@@ -179,10 +188,12 @@ function NightView(props: {
                   : <button type="button" class="more" onClick={() => setShowRest(true)}>{view.rest.length} weniger spannende Spiele anzeigen</button>}
               </section>
             )}
-            {view.played === 0 && <div class="empty">In dieser Nacht gab es keine Spiele.</div>}
+            {view.played === 0 && <div class="empty">{data.games.length ? 'In dieser Liga gab es keine Spiele.' : 'In dieser Nacht gab es keine Spiele.'}</div>}
+            {hotOnly && view.played > 0 && view.hot === 0 && <div class="empty">Keine sehenswerten Spiele in dieser Nacht.</div>}
           </>
         )}
       </main>
+      {box && <BoxSheet game={box} onClose={() => setBox(null)} />}
     </>
   );
 }
@@ -190,13 +201,15 @@ function NightView(props: {
 function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilter: (f: Filter) => void; favorites: Favorite[] }) {
   const { data, error, loading } = useLoad<{ games: Game[]; failed: string[] }>(() => loadUpcoming(), []);
   const all = useMemo(() => prioritize(data?.games ?? [], favorites), [data, favorites]);
+  // Kennzahlen und Gruppen folgen dem Ligafilter
+  const shown = useMemo(() => all.filter((u) => filter === 'Alle' || u.game.league === filter), [all, filter]);
   const groups = useMemo(() => {
-    const shown = all.filter((u) => filter === 'Alle' || u.game.league === filter);
     const order: Tier[] = ['favorite', 'contender', 'rivalry', 'other'];
     return order.map((tier) => ({ tier, items: shown.filter((u) => u.tier === tier) })).filter((g) => g.items.length);
-  }, [all, filter]);
-  const total = all.length;
-  const highlights = all.filter((u) => u.tier !== 'other').length;
+  }, [shown]);
+  const total = shown.length;
+  const highlights = shown.filter((u) => u.tier !== 'other').length;
+  const first = shown.reduce<Game | null>((min, u) => (!min || u.game.start < min.start ? u.game : min), null);
 
   return (
     <>
@@ -209,7 +222,7 @@ function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilt
         <div class="stats">
           <div class="stat"><b>{loading ? '–' : total}</b><small>Spiele</small></div>
           <div class="stat"><b class="hot">{loading ? '–' : highlights}</b><small>Highlights</small></div>
-          <div class="stat"><b>{loading || !data?.games[0] ? '–' : new Date(data.games[0].start).toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' })}</b><small>Erstes Spiel</small></div>
+          <div class="stat"><b>{loading || !first ? '–' : new Date(first.start).toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' })}</b><small>Erstes Spiel</small></div>
         </div>
       </header>
       <FilterBar filter={filter} setFilter={setFilter} />
