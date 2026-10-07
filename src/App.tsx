@@ -118,7 +118,8 @@ function NightView(props: {
   const view = useMemo(() => {
     const all = data?.games ?? [];
     const shown = all.filter((g) => filter === 'Alle' || g.game.league === filter);
-    const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => a.rating.sortKey - b.rating.sortKey);
+    // Meiste Balken zuerst, bei Gleichstand Playoffs und höherer Spannungswert
+    const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => b.rating.level - a.rating.level || a.rating.sortKey - b.rating.sortKey);
     // Das spannendste sehenswerte Spiel, egal wie viele Balken
     const hero = [...hotSorted].sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
     const isFav = (g: { game: Game }) => favoriteOf(g.game, favorites) !== null;
