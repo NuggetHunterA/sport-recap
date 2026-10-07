@@ -61,6 +61,7 @@ h2 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 80
 .hero .disc .badge { background: transparent !important; border: none; box-shadow: none; color: var(--c); }
 .hero .disc .badge img { width: 84%; height: 84%; filter: none; }
 .hero .big-score { min-width: 0; width: 108px; height: 108px; border-radius: 50%; background: #0b0e14; border: 4px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+button.big-score { color: inherit; padding: 0; cursor: pointer; }
 .hero .meter i.on { background: #fff; }
 .hero .glass { background: #fff; border-color: #fff; color: #111; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
 .hero-body { position: relative; display: flex; flex-direction: column; gap: 16px; }

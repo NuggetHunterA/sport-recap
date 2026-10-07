@@ -109,7 +109,9 @@ export function Hero({ item, open, toggle, vote, onVote, onBox }: CardProps) {
           </div>
           <div class="versus">
             <div class="side" style={colors(game.away)}><span class="disc"><Badge team={game.away} size={60} light /></span><span class="side-name">{game.away.short}</span></div>
-            <div class="big-score"><Score game={game} open={open} /></div>
+            {open
+              ? <div class="big-score"><Score game={game} open={open} /></div>
+              : <button type="button" class="big-score" onClick={toggle} aria-label="Ergebnis aufdecken"><Score game={game} open={open} /></button>}
             <div class="side" style={colors(game.home)}><span class="disc"><Badge team={game.home} size={60} light /></span><span class="side-name">{game.home.short}</span></div>
           </div>
           <div class="jersey-stripes" aria-hidden="true">
