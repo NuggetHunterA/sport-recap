@@ -46,7 +46,7 @@ const RULES: Record<League, LeagueRules> = {
   },
 };
 
-export interface Trace {
+interface Trace {
   maxAway: number; // größte Führung Auswärts
   maxHome: number; // größte Führung Heim
   lateMaxAway: number; // größte Führung Auswärts ab latePeriod
@@ -63,7 +63,7 @@ export interface Trace {
   windowMin: number;
 }
 
-export function trace(game: Game): Trace {
+function trace(game: Game): Trace {
   const r = RULES[game.league];
   const final = game.away.score - game.home.score;
   const t: Trace = {
@@ -114,7 +114,7 @@ export function isGarbageTime(game: Game, t = trace(game)): boolean {
 }
 
 /** Abstand, nach dem ein Spiel als eng gilt: bei Garbage Time die Führung vor der Schlussphase. */
-export function effectiveMargin(game: Game, t = trace(game)): number {
+function effectiveMargin(game: Game, t = trace(game)): number {
   const abs = Math.abs(game.away.score - game.home.score);
   return isGarbageTime(game, t) ? Math.max(abs, Math.abs(t.windowStart)) : abs;
 }
@@ -173,7 +173,7 @@ export function isRivalry(league: League, a: string, b: string): boolean {
   );
 }
 
-export function winPct(record?: string): number | null {
+function winPct(record?: string): number | null {
   const parts = (record ?? '').split('-').map((n) => parseInt(n, 10));
   if (parts.length < 2 || parts.some(isNaN)) return null;
   const [w, l, t = 0] = parts;
@@ -195,7 +195,7 @@ const HISTORIC: Record<string, number> = {
 };
 
 /** No-Hitter (MLB) oder herausragende Einzelleistung. Verrät nicht, welches Team. */
-export function isHistoric(game: Game): boolean {
+function isHistoric(game: Game): boolean {
   if (game.league === 'MLB') {
     return game.away.hits === 0 || game.home.hits === 0;
   }
@@ -217,7 +217,7 @@ const PRESEASON_MAX = 57;
 
 const BIG: DramaKind[] = ['walkoff', 'extra', 'ot', 'comeback'];
 
-export function levelOf(score: number): number {
+function levelOf(score: number): number {
   return score >= 75 ? 5 : score >= 58 ? 4 : score >= 42 ? 3 : score >= 25 ? 2 : 1;
 }
 

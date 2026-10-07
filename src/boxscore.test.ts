@@ -23,7 +23,7 @@ describe('Boxscore', () => {
     expect(box.line).toBeUndefined();
   });
 
-  it('MLB: Linescore, Schlagmänner und Pitcher', () => {
+  it('MLB: Linescore, Batter und Pitcher', () => {
     const s = {
       header: { competitions: [{ competitors: [
         { homeAway: 'home', score: '5', hits: 9, errors: 0, linescores: [0, 0, 1, 0, 0, 2, 0, 0, 2].map((v) => ({ displayValue: String(v) })) },
@@ -41,7 +41,7 @@ describe('Boxscore', () => {
     expect(box.line?.innings).toBe(9);
     expect(box.line?.away).toMatchObject({ abbr: 'GS', r: '4', h: '7', e: '1' });
     expect(box.line?.home.runs[8]).toBe('2');
-    expect(box.away?.tables.map((t) => t.title)).toEqual(['Schlagmänner', 'Pitcher']);
+    expect(box.away?.tables.map((t) => t.title)).toEqual(['Batter', 'Pitcher']);
     expect(box.away?.tables[0].rows[0].stats).toEqual(['4', '1', '2', '1', '1', '0', '1']);
     expect(box.away?.tables[1].rows[0].stats).toEqual(['6.0', '5', '3', '3', '2', '8']);
     expect(box.home?.tables).toEqual([]);

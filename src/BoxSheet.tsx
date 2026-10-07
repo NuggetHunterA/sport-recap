@@ -5,7 +5,7 @@ import type { BoxScore, LineScore, Table, TeamBox } from './boxscore';
 import type { Game } from './types';
 
 /** Ligen, für die es einen Boxscore gibt */
-export const BOX_LEAGUES: Game['league'][] = ['NBA', 'MLB', 'NFL'];
+const BOX_LEAGUES: Game['league'][] = ['NBA', 'MLB', 'NFL'];
 
 export function canShowBox(game: Game): boolean {
   return game.state === 'post' && BOX_LEAGUES.includes(game.league);

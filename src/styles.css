@@ -51,10 +51,18 @@ h2 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 80
 .count { font-size: 12px; color: var(--dim); }
 .kicker { display: flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
 
-/* Spiel der Nacht */
-.hero { position: relative; overflow: hidden; border-radius: 24px; padding: 18px; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 18px 40px rgba(0,0,0,.55); }
-.hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,9,13,.05), rgba(7,9,13,.75)); }
-.hero-league { position: absolute; right: -18px; top: -26px; font-family: var(--display); font-style: italic; font-weight: 800; font-size: 150px; line-height: 1; color: rgba(255,255,255,.07); }
+/* Spiel der Nacht: Trikotkarte in den Teamfarben */
+.hero { position: relative; overflow: hidden; border-radius: 24px; padding: 18px; background: var(--card); box-shadow: 0 18px 40px rgba(0,0,0,.55); }
+.jersey { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+.jersey span { background: repeating-linear-gradient(90deg, var(--c) 0 22px, color-mix(in srgb, var(--c) 80%, #000) 22px 26px); }
+.jersey-stripes { display: grid; grid-template-columns: 1fr 1fr; margin: 0 -18px; }
+.jersey-stripes span { height: 10px; background: linear-gradient(var(--c2), var(--c2)) top / 100% 4px no-repeat, linear-gradient(#fff, #fff) bottom / 100% 4px no-repeat; }
+.hero .disc { width: 76px; height: 76px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 4px var(--c2), 0 8px 22px rgba(0,0,0,.35); }
+.hero .disc .badge { background: transparent !important; border: none; box-shadow: none; color: var(--c); }
+.hero .disc .badge img { width: 84%; height: 84%; filter: none; }
+.hero .big-score { min-width: 0; width: 108px; height: 108px; border-radius: 50%; background: #0b0e14; border: 4px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.hero .meter i.on { background: #fff; }
+.hero .glass { background: #fff; border-color: #fff; color: #111; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
 .hero-body { position: relative; display: flex; flex-direction: column; gap: 16px; }
 .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tag { padding: 4px 9px; border-radius: 8px; background: rgba(0,0,0,.35); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
@@ -182,6 +190,8 @@ body.locked { overflow: hidden; }
 .box-table.line thead .sum { color: var(--muted); }
 .box-table.line .first { border-left: 1px solid var(--line); }
 .hero .box-btn { border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.14); color: #fff; }
+.hero .vote { color: rgba(255,255,255,.85); }
+.hero .vote button { border-color: rgba(255,255,255,.3); background: rgba(0,0,0,.25); color: #fff; }
 .box-skeleton { height: 220px; }
 .td-list { padding: 10px 12px 12px; }
 .td-list h3 { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
