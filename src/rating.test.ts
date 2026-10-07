@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseEvent, parseLeaders, parsePlays } from './espn';
-import { addDays, berlinTime, tierOf } from './nights';
+import { addDays, berlinTime, liveLabel, tierOf } from './nights';
 import { isGarbageTime, rate, reason } from './rating';
 import type { Game, League, ScoringPlay } from './types';
 
@@ -202,5 +202,21 @@ describe('gespeicherte Nächte', () => {
     (globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: () => {} };
     const night = await loadNight('2026-10-07');
     expect(night.games[0].rating.level).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('laufende Spiele', () => {
+  it('zeigen Viertel oder Inning, aber ab der Schlussphase nichts, was ein enges Spiel verrät', () => {
+    const g = (league: League, period?: number) => ({ ...game(league, ['A', 0], ['B', 0]), state: 'in' as const, period });
+    expect(liveLabel(g('NBA', 2))).toBe('2. Viertel');
+    expect(liveLabel(g('NBA', 5))).toBe('Schlussphase');
+    expect(liveLabel(g('MLB', 7))).toBe('7. Inning');
+    expect(liveLabel(g('MLB', 9))).toBe('Schlussphase');
+    expect(liveLabel(g('MLB', 11))).toBe('Schlussphase');
+    expect(liveLabel(g('NFL'))).toBe('Läuft');
+  });
+  it('ESPN-Periode wird übernommen', () => {
+    const e = { id: '1', date: '2026-10-07T23:00Z', status: { period: 3, type: { state: 'in' } }, competitions: [{ competitors: [{ homeAway: 'away', team: {} }, { homeAway: 'home', team: {} }] }] };
+    expect(parseEvent('NBA', e)?.period).toBe(3);
   });
 });

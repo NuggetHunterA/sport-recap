@@ -39,6 +39,8 @@ export interface Game {
   league: League;
   start: string; // ISO
   state: 'pre' | 'in' | 'post';
+  /** Laufende Periode (Viertel oder Inning), nur bei laufenden Spielen relevant */
+  period?: number;
   season: SeasonType;
   note?: string; // z. B. "NLDS - Game 2"
   away: Team;

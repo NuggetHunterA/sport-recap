@@ -58,6 +58,7 @@ export function parseEvent(league: League, e: any): Game | null {
     league,
     start: e.date,
     state: e.status?.type?.state ?? 'pre',
+    period: typeof e.status?.period === 'number' ? e.status.period : undefined,
     season: season(e.season?.type ?? comp?.season?.type),
     note: comp?.notes?.[0]?.headline,
     away: team(away),

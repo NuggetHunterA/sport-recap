@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { formatTime } from './nights';
+import { formatTime, liveLabel } from './nights';
 import type { RatedGame, Tier, Upcoming } from './nights';
 import type { Game, Team } from './types';
 import type { Favorite } from './favorites';
@@ -109,7 +109,9 @@ export function Hero({ item, open, toggle, vote, onVote, onBox }: CardProps) {
           </div>
           <div class="versus">
             <div class="side" style={colors(game.away)}><span class="disc"><Badge team={game.away} size={60} light /></span><span class="side-name">{game.away.short}</span></div>
-            <div class="big-score"><Score game={game} open={open} /></div>
+            {open
+              ? <div class="big-score"><Score game={game} open={open} /></div>
+              : <button type="button" class="big-score" onClick={toggle} aria-label="Ergebnis aufdecken"><Score game={game} open={open} /></button>}
             <div class="side" style={colors(game.home)}><span class="disc"><Badge team={game.home} size={60} light /></span><span class="side-name">{game.home.short}</span></div>
           </div>
           <div class="jersey-stripes" aria-hidden="true">
@@ -202,7 +204,9 @@ export function UpcomingCard({ item }: { item: Upcoming }) {
           <b>{game.away.short} @ {game.home.short}</b>
           {hint && <small class="hot">{hint}</small>}
         </div>
-        <div class="time">{formatTime(game.start)}<small>Uhr</small></div>
+        {game.state === 'in'
+          ? <div class="time live">Live<small>{liveLabel(game)}</small></div>
+          : <div class="time">{formatTime(game.start)}<small>Uhr</small></div>}
       </div>
     </Shell>
   );

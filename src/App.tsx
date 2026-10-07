@@ -118,7 +118,8 @@ function NightView(props: {
   const view = useMemo(() => {
     const all = data?.games ?? [];
     const shown = all.filter((g) => filter === 'Alle' || g.game.league === filter);
-    const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => a.rating.sortKey - b.rating.sortKey);
+    // Meiste Balken zuerst, bei Gleichstand Playoffs und höherer Spannungswert
+    const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => b.rating.level - a.rating.level || a.rating.sortKey - b.rating.sortKey);
     // Das spannendste sehenswerte Spiel, egal wie viele Balken
     const hero = [...hotSorted].sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
     const isFav = (g: { game: Game }) => favoriteOf(g.game, favorites) !== null;
@@ -126,8 +127,11 @@ function NightView(props: {
       .filter((f) => filter === 'Alle' || f.league === filter)
       .map((f) => ({ fav: f, item: shown.find((g) => favoriteOf(g.game, [f])) }))
       .filter(({ item }) => !hotOnly || item?.rating.hot);
-    const tips = hotSorted.filter((g) => !isFav(g) && g !== hero);
-    const rest = hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot);
+    // Höchstens 2 Top-Tipps, 3 wenn das Spiel der Nacht von einem Lieblingsteam ist; der Rest kommt zu „Weitere Spiele“
+    const candidates = hotSorted.filter((g) => !isFav(g) && g !== hero);
+    const limit = hero && isFav(hero) ? 3 : 2;
+    const tips = candidates.slice(0, limit);
+    const rest = [...candidates.slice(limit), ...(hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot))];
     // Kennzahlen folgen dem Ligafilter
     return {
       hero, favs, tips, rest,
@@ -185,7 +189,7 @@ function NightView(props: {
                 <div class="section-head"><h2>Weitere Spiele</h2><span class="count">{view.rest.length} {view.rest.length === 1 ? 'Spiel' : 'Spiele'}</span></div>
                 {showRest
                   ? view.rest.map((item) => <GameCard key={item.game.id} {...card(item)} />)
-                  : <button type="button" class="more" onClick={() => setShowRest(true)}>{view.rest.length} weniger spannende Spiele anzeigen</button>}
+                  : <button type="button" class="more" onClick={() => setShowRest(true)}>{view.rest.length} weitere Spiele anzeigen</button>}
               </section>
             )}
             {view.played === 0 && <div class="empty">{data.games.length ? 'In dieser Liga gab es keine Spiele.' : 'In dieser Nacht gab es keine Spiele.'}</div>}
@@ -201,8 +205,10 @@ function NightView(props: {
 function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilter: (f: Filter) => void; favorites: Favorite[] }) {
   const { data, error, loading } = useLoad<{ games: Game[]; failed: string[] }>(() => loadUpcoming(), []);
   const all = useMemo(() => prioritize(data?.games ?? [], favorites), [data, favorites]);
-  // Kennzahlen und Gruppen folgen dem Ligafilter
-  const shown = useMemo(() => all.filter((u) => filter === 'Alle' || u.game.league === filter), [all, filter]);
+  // Kennzahlen und Gruppen folgen dem Ligafilter; laufende Spiele stehen getrennt oben
+  const inFilter = useMemo(() => all.filter((u) => filter === 'Alle' || u.game.league === filter), [all, filter]);
+  const live = inFilter.filter((u) => u.game.state === 'in');
+  const shown = useMemo(() => inFilter.filter((u) => u.game.state === 'pre'), [inFilter]);
   const groups = useMemo(() => {
     const order: Tier[] = ['favorite', 'contender', 'rivalry', 'other'];
     return order.map((tier) => ({ tier, items: shown.filter((u) => u.tier === tier) })).filter((g) => g.items.length);
@@ -210,7 +216,7 @@ function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilt
   const total = shown.length;
   const highlights = shown.filter((u) => u.tier !== 'other').length;
   // loadUpcoming liefert die Spiele nach Uhrzeit sortiert
-  const first = data?.games.find((g) => filter === 'Alle' || g.league === filter);
+  const first = data?.games.find((g) => g.state === 'pre' && (filter === 'Alle' || g.league === filter));
 
   return (
     <>
@@ -231,13 +237,19 @@ function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilt
         {loading && <Skeletons />}
         {error && <div class="error">Der Spielplan konnte nicht geladen werden ({error}).</div>}
         {data && data.failed.length > 0 && <div class="error">Keine Daten für: {data.failed.join(', ')}</div>}
+        {live.length > 0 && (
+          <section class="section">
+            <div class="section-head"><h2>Läuft gerade</h2><span class="count">{live.length} {live.length === 1 ? 'Spiel' : 'Spiele'}</span></div>
+            {live.map((u) => <UpcomingCard key={u.game.id} item={u} />)}
+          </section>
+        )}
         {groups.map(({ tier, items }) => (
           <section class="section" key={tier}>
             <div class="section-head"><h2>{TIER_TITLES[tier]}</h2><span class="count">{items.length} {items.length === 1 ? 'Spiel' : 'Spiele'}</span></div>
             {items.map((u) => <UpcomingCard key={u.game.id} item={u} />)}
           </section>
         ))}
-        {data && !loading && groups.length === 0 && <div class="empty">In den nächsten 24 Stunden stehen keine Spiele an.</div>}
+        {data && !loading && groups.length === 0 && live.length === 0 && <div class="empty">In den nächsten 24 Stunden stehen keine Spiele an.</div>}
       </main>
     </>
   );

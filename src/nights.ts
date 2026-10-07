@@ -104,19 +104,30 @@ export function tierOf(game: Game, favs: Favorite[]): Tier {
 
 export interface Upcoming { game: Game; tier: Tier }
 
-/** Alle Spiele, die in den nächsten 24 Stunden beginnen, nach Uhrzeit sortiert. */
+/** Laufende Spiele und alle, die in den nächsten 24 Stunden beginnen, nach Uhrzeit sortiert. */
 export async function loadUpcoming(now = new Date()): Promise<{ games: Game[]; failed: string[] }> {
   const today = berlinToday(now);
   const { games, failed } = await scoreboards([addDays(today, -1), today, addDays(today, 1)]);
   const until = now.getTime() + 24 * 3600 * 1000;
   const list = games
-    .filter((g) => g.state === 'pre')
     .filter((g) => {
+      if (g.state === 'in') return true;
       const t = new Date(g.start).getTime();
-      return t >= now.getTime() - 15 * 60 * 1000 && t <= until;
+      return g.state === 'pre' && t >= now.getTime() - 15 * 60 * 1000 && t <= until;
     })
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   return { games: list, failed };
+}
+
+/**
+ * Spoilerfreier Hinweis auf den Spielstand ohne Ergebnis. Verlängerung und Extra Innings
+ * verraten ein enges Spiel, darum heißt alles ab der regulären Schlussperiode nur „Schlussphase“.
+ */
+export function liveLabel(game: Game): string {
+  const p = game.period;
+  if (!p) return 'Läuft';
+  if (game.league === 'MLB') return p < 9 ? `${p}. Inning` : 'Schlussphase';
+  return p < 4 ? `${p}. Viertel` : 'Schlussphase';
 }
 
 /** Nach Interesse gruppiert: Lieblingsteams, Top-Matchups, Rivalitäten, Rest. */
