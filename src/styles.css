@@ -88,6 +88,10 @@ h2 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 80
 .matchup small { font-size: 13px; font-weight: 500; color: var(--muted); }
 .matchup small.hot { color: var(--accent); }
 .matchup small.none { color: var(--dim); }
+.card.idle { gap: 10px; }
+.idle-teams { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.idle-teams li { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+.idle-teams .badge { border-width: 1px; box-shadow: none; }
 .score-btn { min-width: 78px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); color: #fff; font-family: var(--display); font-weight: 800; font-size: 20px; white-space: nowrap; }
 .score-btn.open { border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.1); }
 .time { flex-shrink: 0; text-align: right; font-family: var(--display); font-weight: 800; font-size: 24px; line-height: 1; }

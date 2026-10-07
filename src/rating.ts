@@ -212,6 +212,9 @@ function ruleScore(game: Game, d: DramaKind | null, margin: number): number {
   return margin <= limit * 2 ? 30 : 10;
 }
 
+/** Höchster Spannungswert in der Preseason, entspricht Stufe 3 */
+const PRESEASON_MAX = 57;
+
 const BIG: DramaKind[] = ['walkoff', 'extra', 'ot', 'comeback'];
 
 export function levelOf(score: number): number {
@@ -236,6 +239,8 @@ export function rate(game: Game): Rating {
   if (strong) score += 6;
   if (big) score = Math.max(score, 70);
   if (historic) score = Math.max(score, 65);
+  // Preseason ist nie Pflichtprogramm: höchstens 3 von 5 Balken
+  if (game.season === 'preseason') score = Math.min(score, PRESEASON_MAX);
   score = Math.min(100, Math.max(0, Math.round(score)));
 
   const level = levelOf(score);

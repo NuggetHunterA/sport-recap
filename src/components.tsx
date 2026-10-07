@@ -3,6 +3,8 @@ import type { ComponentChildren } from 'preact';
 import { formatTime } from './nights';
 import type { RatedGame, Tier, Upcoming } from './nights';
 import type { Game, Team } from './types';
+import type { Favorite } from './favorites';
+import { TEAMS } from './teams';
 
 export const Icon = {
   shield: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z" /></svg>,
@@ -130,13 +132,22 @@ export function GameCard({ item, open, toggle, vote, onVote }: { item: RatedGame
   );
 }
 
-export function NoGameCard({ name, league }: { name: string; league: string }) {
+/** Eine kompakte Kachel für alle Lieblingsteams, die letzte Nacht nicht gespielt haben. */
+export function NoGameCard({ favs }: { favs: Favorite[] }) {
   return (
-    <article class="card">
-      <div class="card-top"><div class="meta"><span class="league">{league}</span></div></div>
-      <div class="card-main">
-        <div class="matchup"><b>{name}</b><small class="none">Kein Spiel letzte Nacht</small></div>
-      </div>
+    <article class="card idle">
+      <div class="card-top"><div class="meta"><span>Kein Spiel letzte Nacht</span></div></div>
+      <ul class="idle-teams">
+        {favs.map((f) => {
+          const team = TEAMS.find((t) => t.league === f.league && t.name.includes(f.match));
+          return (
+            <li key={`${f.league}:${f.label}`}>
+              {team && <Badge team={team} size={24} />}
+              <span>{f.label}</span>
+            </li>
+          );
+        })}
+      </ul>
     </article>
   );
 }
