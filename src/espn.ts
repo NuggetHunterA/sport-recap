@@ -77,13 +77,6 @@ export function parseLeaders(sources: any[]): Leader[] {
   return out;
 }
 
-/** Siegwahrscheinlichkeit des Heimteams aus der Spielzusammenfassung. */
-export function parseWinProbability(summary: any): number[] | undefined {
-  const list: any[] = summary?.winprobability ?? [];
-  const wp = list.map((p) => Number(p?.homeWinPercentage)).filter((p) => Number.isFinite(p) && p >= 0 && p <= 1);
-  return wp.length ? wp : undefined;
-}
-
 function clockSeconds(clock: any): number | undefined {
   if (typeof clock?.value === 'number') return clock.value;
   const m = /^(\d+):(\d+)/.exec(clock?.displayValue ?? '');
@@ -118,7 +111,7 @@ export async function withPlays(game: Game): Promise<Game> {
   try {
     // Beendete Spiele ändern sich nicht mehr
     const s = await getJson(`${BASE}/${PATHS[game.league]}/summary?event=${game.id}`, 24 * 60 * MINUTE);
-    return { ...game, plays: parsePlays(s), wp: parseWinProbability(s) };
+    return { ...game, plays: parsePlays(s) };
   } catch {
     // Ohne Spielverlauf wird nur nach Endabstand bewertet, wie in HA
     return game;

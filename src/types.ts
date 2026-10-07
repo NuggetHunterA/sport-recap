@@ -42,8 +42,6 @@ export interface Game {
   away: Team;
   home: Team;
   plays?: ScoringPlay[];
-  /** Verlauf der Siegwahrscheinlichkeit des Heimteams (0 bis 1), falls ESPN ihn liefert */
-  wp?: number[];
   leaders?: Leader[];
 }
 

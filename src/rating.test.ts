@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { parseEvent, parseLeaders, parsePlays, parseWinProbability } from './espn';
+import { parseEvent, parseLeaders, parsePlays } from './espn';
 import { addDays, berlinTime, tierOf } from './nights';
-import { isGarbageTime, rate, reason, wpScore } from './rating';
+import { isGarbageTime, rate, reason } from './rating';
 import type { Game, League, ScoringPlay } from './types';
 
 function game(league: League, away: [string, number], home: [string, number], plays: ScoringPlay[] = [], extra: Partial<Game> = {}): Game {
@@ -168,13 +168,6 @@ describe('verbesserte Bewertung', () => {
     expect(isGarbageTime(g)).toBe(true);
     expect(rate(g).hot).toBe(false);
   });
-  it('Siegwahrscheinlichkeit: Achterbahn schlägt klaren Verlauf', () => {
-    const wild = Array.from({ length: 40 }, (_, i) => 0.5 + 0.35 * Math.sin(i / 2));
-    const flat = Array.from({ length: 40 }, (_, i) => Math.min(0.99, 0.6 + i / 80));
-    expect(wpScore(game('NBA', ['A', 1], ['B', 2], [], { wp: wild }))!).toBeGreaterThan(60);
-    expect(wpScore(game('NBA', ['A', 1], ['B', 2], [], { wp: flat }))!).toBeLessThan(25);
-    expect(wpScore(game('NBA', ['A', 1], ['B', 2]))).toBeNull();
-  });
   it('No-Hitter und 50-Punkte-Spiel sind historisch, auch bei klarem Ergebnis', () => {
     const nh = game('MLB', ['A', 0], ['B', 6]);
     nh.away.hits = 0;
@@ -188,8 +181,7 @@ describe('verbesserte Bewertung', () => {
     strong.home.record = '38-12';
     expect(rate(strong).score).toBeGreaterThan(rate(base).score);
   });
-  it('liest Bestwerte und Siegwahrscheinlichkeit', () => {
+  it('liest Bestwerte', () => {
     expect(parseLeaders([{ leaders: [{ name: 'points', leaders: [{ value: 51 }] }] }])).toEqual([{ stat: 'points', value: 51 }]);
-    expect(parseWinProbability({ winprobability: [{ homeWinPercentage: 0.5 }, { homeWinPercentage: 0.7 }] })).toEqual([0.5, 0.7]);
   });
 });

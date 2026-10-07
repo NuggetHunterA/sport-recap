@@ -44,7 +44,7 @@ export interface Night {
   failed: string[];
 }
 
-const cacheKey = (date: string) => `night:v3:${date}`;
+const cacheKey = (date: string) => `night:v4:${date}`;
 
 /**
  * Beendete Spiele der Nacht vor `date`: Start zwischen Vortag 12:00 und `date` 12:00 Berliner Zeit.

@@ -1,8 +1,6 @@
 // Spoilerfreie Bewertung eines beendeten Spiels.
 //
-// Kern ist ein Spannungswert von 0 bis 100. Liefert ESPN den Verlauf der
-// Siegwahrscheinlichkeit, kommt er daraus (wie stark sie schwankt und wie offen
-// das Spiel am Ende war). Sonst kommt er aus den Regeln der Home-Assistant-
+// Kern ist ein Spannungswert von 0 bis 100 aus den Regeln der Home-Assistant-
 // Automationen, die auch die spoilerfreien Gründe liefern. Rivalität, Playoffs
 // und Duelle starker Teams geben einen Bonus, besondere Leistungen eine Untergrenze.
 import { CONTENDER_MIN_GAMES, CONTENDER_WIN_PCT, RIVALRIES } from './config';
@@ -25,8 +23,6 @@ interface LeagueRules {
   /** Führung zu Beginn der Schlussphase, ab der ein nie engeres Ende Garbage Time ist */
   garbageLead: number;
   margins: { normal: number; playoff: number; rivalry: number; preseason: number };
-  /** Summe der Schwankungen der Siegwahrscheinlichkeit, die als sehr hoch gilt */
-  swingHigh: number;
 }
 
 const RULES: Record<League, LeagueRules> = {
@@ -35,21 +31,18 @@ const RULES: Record<League, LeagueRules> = {
     inWindow: (p) => p >= 8, windowClose: 1,
     comeback: 3, comebackMargin: 3, garbageLead: Infinity,
     margins: { normal: 2, playoff: 3, rivalry: 3, preseason: 1 },
-    swingHigh: 5,
   },
   NBA: {
     changePeriod: 3, regulation: 4, latePeriod: 3,
     inWindow: (p, c) => (p === 4 && (c ?? 720) <= 180) || p > 4, windowClose: 5,
     comeback: 12, comebackMargin: 10, garbageLead: 10,
     margins: { normal: 6, playoff: 10, rivalry: 10, preseason: 5 },
-    swingHigh: 7,
   },
   NFL: {
     changePeriod: 4, regulation: 4, latePeriod: 3,
     inWindow: (p, c) => (p === 4 && (c ?? 900) <= 300) || p > 4, windowClose: 8,
     comeback: 14, comebackMargin: 10, garbageLead: 14,
     margins: { normal: 8, playoff: 14, rivalry: 10, preseason: 3 },
-    swingHigh: 7,
   },
 };
 
@@ -209,21 +202,7 @@ export function isHistoric(game: Game): boolean {
   return (game.leaders ?? []).some((l) => HISTORIC[l.stat] !== undefined && l.value >= HISTORIC[l.stat]);
 }
 
-/**
- * Spannung aus dem Verlauf der Siegwahrscheinlichkeit: 60 Punkte für die
- * Summe der Schwankungen, 40 dafür, wie offen das letzte Viertel des Spiels war.
- */
-export function wpScore(game: Game): number | null {
-  const wp = game.wp ?? [];
-  if (wp.length < 10) return null;
-  let swing = 0;
-  for (let i = 1; i < wp.length; i++) swing += Math.abs(wp[i] - wp[i - 1]);
-  const tail = wp.slice(Math.floor(wp.length * 0.75), -1);
-  const open = tail.length ? tail.filter((p) => p >= 0.2 && p <= 0.8).length / tail.length : 0;
-  return Math.round(60 * Math.min(swing / RULES[game.league].swingHigh, 1) + 40 * open);
-}
-
-/** Spannung aus den Regeln, wenn ESPN keine Siegwahrscheinlichkeit liefert. */
+/** Spannung aus den Regeln. */
 function ruleScore(game: Game, d: DramaKind | null, margin: number): number {
   const m = RULES[game.league].margins;
   const limit = game.season === 'preseason' ? m.preseason : m.normal;
@@ -250,7 +229,7 @@ export function rate(game: Game): Rating {
   const historic = isHistoric(game);
   const big = d !== null && BIG.includes(d);
 
-  let score = wpScore(game) ?? ruleScore(game, d, margin);
+  let score = ruleScore(game, d, margin);
   // Rivalität und Playoffs zählen nur, wenn das Spiel nicht völlig einseitig war
   if (playoff && margin <= m.playoff) score += 12;
   if (rivalry && margin <= m.rivalry) score += 12;
