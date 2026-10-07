@@ -1,5 +1,5 @@
 // Daten von der (inoffiziellen) ESPN-API, dieselbe Quelle wie in Home Assistant.
-import type { Game, League, ScoringPlay, SeasonType, Team } from './types';
+import type { Game, League, Leader, ScoringPlay, SeasonType, Team } from './types';
 import { LEAGUES } from './types';
 
 const PATHS: Record<League, string> = {
@@ -38,6 +38,7 @@ function team(c: any): Team {
     logo: t.logo,
     record: c?.records?.[0]?.summary,
     score: parseInt(c?.score ?? '0', 10) || 0,
+    hits: typeof c?.hits === 'number' ? c.hits : undefined,
   };
 }
 
@@ -60,7 +61,27 @@ export function parseEvent(league: League, e: any): Game | null {
     note: comp?.notes?.[0]?.headline,
     away: team(away),
     home: team(home),
+    leaders: parseLeaders([comp, away, home]),
   };
+}
+
+/** Bestwerte aus dem Scoreboard (NBA: pro Team, NFL: pro Spiel). */
+export function parseLeaders(sources: any[]): Leader[] {
+  const out: Leader[] = [];
+  for (const src of sources) {
+    for (const cat of src?.leaders ?? []) {
+      const value = Number(cat?.leaders?.[0]?.value);
+      if (cat?.name && Number.isFinite(value)) out.push({ stat: cat.name, value });
+    }
+  }
+  return out;
+}
+
+/** Siegwahrscheinlichkeit des Heimteams aus der Spielzusammenfassung. */
+export function parseWinProbability(summary: any): number[] | undefined {
+  const list: any[] = summary?.winprobability ?? [];
+  const wp = list.map((p) => Number(p?.homeWinPercentage)).filter((p) => Number.isFinite(p) && p >= 0 && p <= 1);
+  return wp.length ? wp : undefined;
 }
 
 function clockSeconds(clock: any): number | undefined {
@@ -97,7 +118,7 @@ export async function withPlays(game: Game): Promise<Game> {
   try {
     // Beendete Spiele ändern sich nicht mehr
     const s = await getJson(`${BASE}/${PATHS[game.league]}/summary?event=${game.id}`, 24 * 60 * MINUTE);
-    return { ...game, plays: parsePlays(s) };
+    return { ...game, plays: parsePlays(s), wp: parseWinProbability(s) };
   } catch {
     // Ohne Spielverlauf wird nur nach Endabstand bewertet, wie in HA
     return game;

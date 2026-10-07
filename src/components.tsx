@@ -12,18 +12,39 @@ export const Icon = {
   clock: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
   star: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 6.9L12 17.6 5.7 21l1.5-6.9L2 9.3l7-.8z" /></svg>,
   starFilled: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 6.9L12 17.6 5.7 21l1.5-6.9L2 9.3l7-.8z" /></svg>,
+  thumbUp: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3zm0 0l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.1 21H7" /></svg>,
+  thumbDown: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3zm0 0l-4 8a3 3 0 0 1-3-3v-4H4.5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.9 3H17" /></svg>,
   left: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>,
   right: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>,
 };
 
+/** ESPN-Logo in der Variante für dunkle Hintergründe, mit dem normalen Logo als Ersatz. */
+export function logoCandidates(logo?: string): string[] {
+  if (!logo) return [];
+  const dark = logo.replace('/500/scoreboard/', '/500/').replace('/500/', '/500-dark/');
+  return dark === logo ? [logo] : [dark, logo];
+}
+
 export function Badge({ team, size }: { team: Pick<Team, 'color' | 'logo' | 'abbr'>; size: number }) {
-  const [broken, setBroken] = useState(false);
+  const candidates = logoCandidates(team.logo);
+  const [attempt, setAttempt] = useState(0);
+  const src = candidates[attempt];
   return (
     <span class="badge" style={{ width: size, height: size, background: team.color, fontSize: Math.round(size * 0.36) }}>
-      {team.logo && !broken
-        ? <img src={team.logo} alt={team.abbr} loading="lazy" onError={() => setBroken(true)} />
+      {src
+        ? <img key={src} src={src} alt={team.abbr} loading="lazy" onError={() => setAttempt(attempt + 1)} />
         : team.abbr}
     </span>
+  );
+}
+
+export function VoteButtons({ vote, onVote }: { vote?: 1 | -1; onVote: (v: 1 | -1) => void }) {
+  return (
+    <div class="vote" role="group" aria-label="Hat sich das Spiel gelohnt?">
+      <span>Gelohnt?</span>
+      <button type="button" aria-pressed={vote === 1} aria-label="Hat sich gelohnt" onClick={() => onVote(1)}>{Icon.thumbUp}</button>
+      <button type="button" aria-pressed={vote === -1} aria-label="War langweilig" onClick={() => onVote(-1)}>{Icon.thumbDown}</button>
+    </div>
   );
 }
 
@@ -46,7 +67,7 @@ function label(game: Game): string {
   return game.season === 'preseason' ? 'Preseason' : game.season === 'playoff' ? 'Playoffs' : 'Regular Season';
 }
 
-export function Hero({ item, open, toggle }: { item: RatedGame; open: boolean; toggle: () => void }) {
+export function Hero({ item, open, toggle, vote, onVote }: { item: RatedGame; open: boolean; toggle: () => void; vote?: 1 | -1; onVote: (v: 1 | -1) => void }) {
   const { game, rating } = item;
   const bg = `linear-gradient(125deg, ${game.away.color} 0%, ${game.away.color} 48%, ${game.home.color} 52%, ${game.home.color} 100%)`;
   return (
@@ -68,6 +89,7 @@ export function Hero({ item, open, toggle }: { item: RatedGame; open: boolean; t
             <div><div class="meter-label">Spannung</div><Meter level={rating.level} big /></div>
             <button type="button" class="glass" onClick={toggle}>{Icon.eye} {open ? 'Verbergen' : 'Aufdecken'}</button>
           </div>
+          {open && <VoteButtons vote={vote} onVote={onVote} />}
         </div>
       </article>
     </section>
@@ -84,7 +106,7 @@ function Shell({ away, home, hot, children }: { away: string; home: string; hot:
   );
 }
 
-export function GameCard({ item, open, toggle }: { item: RatedGame; open: boolean; toggle: () => void }) {
+export function GameCard({ item, open, toggle, vote, onVote }: { item: RatedGame; open: boolean; toggle: () => void; vote?: 1 | -1; onVote: (v: 1 | -1) => void }) {
   const { game, rating } = item;
   return (
     <Shell away={game.away.color} home={game.home.color} hot={rating.hot}>
@@ -103,6 +125,7 @@ export function GameCard({ item, open, toggle }: { item: RatedGame; open: boolea
           <Score game={game} open={open} />
         </button>
       </div>
+      {open && <VoteButtons vote={vote} onVote={onVote} />}
     </Shell>
   );
 }
