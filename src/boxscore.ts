@@ -148,7 +148,7 @@ function teamBox(entry: any, league: Game['league']): TeamBox {
     const t = table(groups[0], NBA, 'Spieler');
     if (t) tables.push(t);
   } else if (league === 'MLB') {
-    const bat = table(groupOf(groups, 'batting') ?? groups[0], BATTING, 'Schlagmänner');
+    const bat = table(groupOf(groups, 'batting') ?? groups[0], BATTING, 'Batter');
     const pit = table(groupOf(groups, 'pitching') ?? groups[1], PITCHING, 'Pitcher');
     if (bat) tables.push(bat);
     if (pit) tables.push(pit);
