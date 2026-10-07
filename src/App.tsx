@@ -120,18 +120,20 @@ function NightView(props: {
     const shown = all.filter((g) => filter === 'Alle' || g.game.league === filter);
     // Meiste Balken zuerst, bei Gleichstand Playoffs und höherer Spannungswert
     const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => b.rating.level - a.rating.level || a.rating.sortKey - b.rating.sortKey);
-    // Das spannendste sehenswerte Spiel, egal wie viele Balken
-    const hero = [...hotSorted].sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
     const isFav = (g: { game: Game }) => favoriteOf(g.game, favorites) !== null;
+    // Ohne Ligafilter stellt die NFL nur mit Lieblingsteam das Spiel der Nacht oder einen Top-Tipp
+    const eligible = (g: RatedGame) => filter !== 'Alle' || g.game.league !== 'NFL' || isFav(g);
+    // Das spannendste sehenswerte Spiel, egal wie viele Balken
+    const hero = hotSorted.filter(eligible).sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
     const favs = favorites
       .filter((f) => filter === 'Alle' || f.league === filter)
       .map((f) => ({ fav: f, item: shown.find((g) => favoriteOf(g.game, [f])) }))
       .filter(({ item }) => !hotOnly || item?.rating.hot);
     // Höchstens 2 Top-Tipps, 3 wenn das Spiel der Nacht von einem Lieblingsteam ist; der Rest kommt zu „Weitere Spiele“
-    const candidates = hotSorted.filter((g) => !isFav(g) && g !== hero);
+    const others = hotSorted.filter((g) => !isFav(g) && g !== hero);
     const limit = hero && isFav(hero) ? 3 : 2;
-    const tips = candidates.slice(0, limit);
-    const rest = [...candidates.slice(limit), ...(hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot))];
+    const tips = others.filter(eligible).slice(0, limit);
+    const rest = [...others.filter((g) => !tips.includes(g)), ...(hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot))];
     // Kennzahlen folgen dem Ligafilter
     return {
       hero, favs, tips, rest,
