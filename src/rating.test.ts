@@ -115,3 +115,40 @@ describe('NFL-Rivalitäten', () => {
     expect(rate(game('NFL', ['Las Vegas Raiders', 20], ['Kansas City Chiefs', 27])).hot).toBe(true);
   });
 });
+
+describe('Zwischenspeicher', () => {
+  it('fragt dasselbe Scoreboard innerhalb von 5 Minuten nur einmal ab', async () => {
+    const { scoreboard } = await import('./espn');
+    let calls = 0;
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () => { calls++; return new Response(JSON.stringify({ events: [] })); }) as typeof fetch;
+    try {
+      await scoreboard('NBA', '2026-10-01');
+      await scoreboard('NBA', '2026-10-01');
+      expect(calls).toBe(1);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+});
+
+describe('Teamliste', async () => {
+  const { TEAMS } = await import('./teams');
+  const { FAVORITES, RIVALRIES } = await import('./config');
+  it('hat 30 MLB-, 30 NBA- und 32 NFL-Teams', () => {
+    expect(TEAMS.filter((t) => t.league === 'MLB')).toHaveLength(30);
+    expect(TEAMS.filter((t) => t.league === 'NBA')).toHaveLength(30);
+    expect(TEAMS.filter((t) => t.league === 'NFL')).toHaveLength(32);
+  });
+  it('jeder Spitzname trifft in seiner Liga genau ein Team', () => {
+    for (const t of TEAMS) {
+      expect(TEAMS.filter((o) => o.league === t.league && o.name.includes(t.short)).map((o) => o.name)).toEqual([t.name]);
+    }
+  });
+  it('alle Lieblingsteams und Rivalitäten gibt es wirklich', () => {
+    for (const f of FAVORITES) expect(TEAMS.some((t) => t.league === f.league && t.name.includes(f.match))).toBe(true);
+    for (const [league, pairs] of Object.entries(RIVALRIES)) {
+      for (const name of pairs.flat()) expect(TEAMS.some((t) => t.league === league && t.name.includes(name)), name).toBe(true);
+    }
+  });
+});
