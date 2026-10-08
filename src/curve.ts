@@ -156,6 +156,6 @@ export function curve(game: Game): Curve | null {
   return {
     final, course, turns: turnShare, comeback: comebackShare,
     // Wendungen oder Aufholjagd, je nachdem, was das Spiel mehr geprägt hat
-    score: 100 * (0.5 * final + 0.3 * course + 0.2 * Math.max(turnShare, comebackShare) + 0.1 * comebackShare),
+    score: 100 * (0.5 * final + 0.3 * course + 0.2 * Math.max(turnShare, comebackShare) + 0.05 * comebackShare),
   };
 }
