@@ -30,19 +30,19 @@ const RULES: Record<League, LeagueRules> = {
     changePeriod: 7, regulation: 9, latePeriod: 6,
     inWindow: (p) => p >= 8, windowClose: 1,
     comeback: 3, comebackMargin: 3, garbageLead: Infinity,
-    margins: { normal: 2, playoff: 3, rivalry: 4, preseason: 1 },
+    margins: { normal: 2, playoff: 3, rivalry: 6, preseason: 1 },
   },
   NBA: {
     changePeriod: 3, regulation: 4, latePeriod: 3,
     inWindow: (p, c) => (p === 4 && (c ?? 720) <= 180) || p > 4, windowClose: 5,
     comeback: 12, comebackMargin: 10, garbageLead: 10,
-    margins: { normal: 6, playoff: 10, rivalry: 12, preseason: 5 },
+    margins: { normal: 6, playoff: 10, rivalry: 19, preseason: 5 },
   },
   NFL: {
     changePeriod: 4, regulation: 4, latePeriod: 3,
     inWindow: (p, c) => (p === 4 && (c ?? 900) <= 300) || p > 4, windowClose: 8,
     comeback: 14, comebackMargin: 10, garbageLead: 14,
-    margins: { normal: 8, playoff: 14, rivalry: 14, preseason: 3 },
+    margins: { normal: 8, playoff: 14, rivalry: 20, preseason: 3 },
   },
 };
 
@@ -251,7 +251,7 @@ export function rate(game: Game): Rating {
   if (strong) score += 6;
   if (big) score = Math.max(score, 70);
   if (historic) score = Math.max(score, 65);
-  // Rivalität: ein Balken mehr, wenn das Spiel nicht klar war
+  // Rivalität: ein Balken mehr, außer bei einer Klatsche (MLB ab 7 Runs, NBA ab 20, NFL ab 21 Punkten)
   if (rivalry && margin <= m.rivalry) score = Math.max(score, LEVEL_MIN[Math.min(5, levelOf(score) + 1)]);
   // Preseason ist nie Pflichtprogramm: höchstens 3 von 5 Balken
   if (game.season === 'preseason') score = Math.min(score, PRESEASON_MAX);

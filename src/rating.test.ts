@@ -236,11 +236,15 @@ describe('laufende Spiele', () => {
 });
 
 describe('Rivalität, MLB-Verlauf und historische MLB-Leistungen', () => {
-  it('Rivalität gibt einen Balken mehr, wenn das Spiel nicht klar war', () => {
+  it('Rivalität gibt einen Balken mehr, außer bei einer Klatsche', () => {
     expect(rate(game('MLB', ['New York Yankees', 6], ['Boston Red Sox', 2], [p(6, 2, 3)])).level).toBe(3);
     expect(rate(game('MLB', ['A', 6], ['B', 2], [p(6, 2, 3)])).level).toBe(2);
     expect(rate(game('NBA', ['Los Angeles Lakers', 111], ['Boston Celtics', 100], [p(60, 50, 2, 100), p(111, 100, 4, 10)])).level).toBe(3);
     expect(rate(game('NBA', ['A', 111], ['B', 100], [p(60, 50, 2, 100), p(111, 100, 4, 10)])).level).toBe(2);
+    expect(rate(game('MLB', ['New York Yankees', 8], ['Boston Red Sox', 2], [p(8, 2, 3)])).level).toBe(2);
+    expect(rate(game('MLB', ['A', 8], ['B', 2], [p(8, 2, 3)])).level).toBe(1);
+    expect(rate(game('MLB', ['New York Yankees', 9], ['Boston Red Sox', 2], [p(9, 2, 3)])).level).toBe(1);
+    expect(rate(game('NBA', ['Los Angeles Lakers', 118], ['Boston Celtics', 100], [p(60, 50, 2, 100), p(118, 100, 4, 10)])).level).toBe(2);
     expect(rate(game('NBA', ['Los Angeles Lakers', 125], ['Boston Celtics', 100], [p(70, 50, 2, 100), p(125, 100, 4, 10)])).level).toBe(1);
   });
   it('Rivalität in der Preseason bleibt bei höchstens 3 Balken', () => {
