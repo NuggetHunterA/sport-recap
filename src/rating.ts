@@ -35,27 +35,45 @@ export function bothStrong(game: Game): boolean {
   return a !== null && b !== null && a >= CONTENDER_WIN_PCT && b >= CONTENDER_WIN_PCT;
 }
 
-/** Ab diesen Werten gilt eine Einzelleistung als historisch. */
-const HISTORIC: Record<string, number> = {
-  points: 50, rebounds: 25, assists: 20, // NBA
-  passingYards: 450, rushingYards: 200, receivingYards: 200, // NFL
+/** Ab diesen Werten gilt eine Einzelleistung als historisch, mit Bezeichnung für die Anzeige nach dem Aufdecken. */
+const HISTORIC: Record<string, [number, string]> = {
+  points: [50, 'Punkte'], rebounds: [25, 'Rebounds'], assists: [20, 'Assists'], // NBA
+  passingYards: [450, 'Passing Yards'], rushingYards: [200, 'Rushing Yards'], receivingYards: [200, 'Receiving Yards'], // NFL
 };
 
 /** MLB-Einzelleistungen aus dem Boxscore (Pitcher-Strikeouts, Home Runs, RBI, Hits eines Batters). */
-const HISTORIC_MLB: Record<string, number> = { strikeouts: 14, homeRuns: 3, rbis: 7, hits: 5 };
+const HISTORIC_MLB: Record<string, [number, string]> = { strikeouts: [14, 'Strikeouts'], homeRuns: [3, 'Home Runs'], rbis: [7, 'RBI'], hits: [5, 'Hits'] };
 
-/** No-Hitter oder herausragende Einzelleistung. Verrät nicht, welches Team. */
-function isHistoric(game: Game): boolean {
-  if (game.league === 'MLB') {
-    return game.away.hits === 0 || game.home.hits === 0
-      || (game.feats ?? []).some((f) => HISTORIC_MLB[f.stat] !== undefined && f.value >= HISTORIC_MLB[f.stat]);
-  }
-  return (game.leaders ?? []).some((l) => HISTORIC[l.stat] !== undefined && l.value >= HISTORIC[l.stat]);
+export interface Feat {
+  /** z. B. "52 Punkte" oder "No-Hitter" */
+  label: string;
+  /** Spieler oder Team */
+  name?: string;
 }
 
-/** Kontext zählt nur bei Spielen, die ohnehin mindestens Stufe 3 erreichen: Playoffs +5, Rivalität +3, Topduell +3, zusammen höchstens +8. */
-function context(playoff: boolean, rivalry: boolean, strong: boolean): number {
-  return Math.min(8, (playoff ? 5 : 0) + (rivalry ? 3 : 0) + (strong ? 3 : 0));
+/** No-Hitter und herausragende Einzelleistungen. Nur nach dem Aufdecken zeigen, die Namen verraten ein Team. */
+export function historicFeats(game: Game): Feat[] {
+  const out: Feat[] = [];
+  if (game.league === 'MLB') {
+    // Ein No-Hitter gehört dem Team, das keinen Hit zugelassen hat
+    if (game.away.hits === 0) out.push({ label: 'No-Hitter', name: game.home.short });
+    if (game.home.hits === 0) out.push({ label: 'No-Hitter', name: game.away.short });
+  }
+  const table = game.league === 'MLB' ? HISTORIC_MLB : HISTORIC;
+  for (const f of (game.league === 'MLB' ? game.feats : game.leaders) ?? []) {
+    const rule = table[f.stat];
+    if (rule && f.value >= rule[0]) out.push({ label: `${f.value} ${rule[1]}`, name: f.name });
+  }
+  return out;
+}
+
+function isHistoric(game: Game): boolean {
+  return historicFeats(game).length > 0;
+}
+
+/** Kontext zählt nur bei Spielen, die ohnehin mindestens Stufe 3 erreichen: Playoffs +5, historische Leistung +5, Rivalität +3, Topduell +3, zusammen höchstens +8. */
+function context(playoff: boolean, historic: boolean, rivalry: boolean, strong: boolean): number {
+  return Math.min(8, (playoff ? 5 : 0) + (historic ? 5 : 0) + (rivalry ? 3 : 0) + (strong ? 3 : 0));
 }
 
 /** Höchster Spannungswert in der Preseason, entspricht Stufe 3 */
@@ -79,7 +97,7 @@ export function rate(game: Game): Rating {
 
   // Ohne Spielverlauf zählt nur, wie offen der Endstand gewesen wäre
   let raw = curve(game)?.score ?? 100 * openness(game.league, Math.abs(game.away.score - game.home.score), 0);
-  if (raw >= t[1]) raw += context(playoff, rivalry, strong);
+  if (raw >= t[1]) raw += context(playoff, historic, rivalry, strong);
   if (historic) raw = Math.max(raw, t[1]);
 
   let level = 1 + t.filter((x) => raw >= x).length;

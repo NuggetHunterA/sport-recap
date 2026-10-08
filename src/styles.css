@@ -198,3 +198,19 @@ body.locked { overflow: hidden; }
 @keyframes rise { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet-backdrop, .time.live::before { animation: none; } }
+
+/* Historische Einzelleistung nach dem Aufdecken */
+.feat-pills { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+.feat-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 700; box-shadow: 0 4px 14px rgba(176,89,45,.3); animation: pop .55s cubic-bezier(.2,.9,.3,1.2) both; }
+.feat-band { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 14px; border-radius: 14px; background: linear-gradient(100deg, #e9c46a, #d99a3e); color: #3a2410; box-shadow: 0 6px 18px rgba(160,100,30,.3); animation: pop .55s cubic-bezier(.2,.9,.3,1.2) both; }
+.feat-band .feat-icon { flex: none; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.45); display: flex; align-items: center; justify-content: center; }
+.feat-band small { display: block; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; opacity: .75; }
+.feat-band b { display: block; font-family: var(--heading); font-size: 17px; font-weight: 800; }
+.feat-band b span { font-weight: 600; }
+.feat-medals { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 12px; }
+.feat-medal { display: flex; align-items: center; gap: 10px; animation: pop .55s cubic-bezier(.2,.9,.3,1.2) both; }
+.feat-medal .medal { width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fbe3a0, #d99a3e 70%); border: 3px solid #fff; box-shadow: 0 4px 14px rgba(160,100,30,.4); display: flex; align-items: center; justify-content: center; }
+.feat-medal .medal b { font-family: var(--display); font-weight: 800; font-size: 22px; color: #3a2410; }
+.feat-medal > div b { display: block; font-family: var(--heading); font-size: 15px; font-weight: 800; }
+.feat-medal > div small { color: var(--muted); font-size: 12px; }
+.hero .feat-medal > div small { color: inherit; opacity: .8; }

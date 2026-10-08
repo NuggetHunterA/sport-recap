@@ -78,8 +78,9 @@ export function parseLeaders(sources: any[]): Leader[] {
   const out: Leader[] = [];
   for (const src of sources) {
     for (const cat of src?.leaders ?? []) {
-      const value = Number(cat?.leaders?.[0]?.value);
-      if (cat?.name && Number.isFinite(value)) out.push({ stat: cat.name, value });
+      const top = cat?.leaders?.[0];
+      const value = Number(top?.value);
+      if (cat?.name && Number.isFinite(value)) out.push({ stat: cat.name, value, name: top?.athlete?.shortName ?? top?.athlete?.displayName });
     }
   }
   return out;

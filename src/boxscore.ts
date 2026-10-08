@@ -247,14 +247,15 @@ export async function loadBoxScore(game: Game): Promise<BoxScore> {
 export function mlbFeats(s: any, game: Pick<Game, 'league' | 'away' | 'home'>): Leader[] {
   const box = parseBoxScore(s, game);
   const tables = [...(box.away?.tables ?? []), ...(box.home?.tables ?? [])];
-  const best = (title: string, column: string) => Math.max(0, ...tables
+  const best = (stat: string, title: string, column: string): Leader => tables
     .filter((t) => t.title === title)
-    .flatMap((t) => t.rows.map((r) => parseFloat(r.stats[t.columns.indexOf(column)]) || 0)));
+    .flatMap((t) => t.rows.map((r) => ({ stat, value: parseFloat(r.stats[t.columns.indexOf(column)]) || 0, name: r.name })))
+    .reduce((a, b) => (b.value > a.value ? b : a), { stat, value: 0 });
   return [
-    { stat: 'strikeouts', value: best('Pitcher', 'K') },
-    { stat: 'homeRuns', value: best('Batter', 'HR') },
-    { stat: 'rbis', value: best('Batter', 'RBI') },
-    { stat: 'hits', value: best('Batter', 'H') },
+    best('strikeouts', 'Pitcher', 'K'),
+    best('homeRuns', 'Batter', 'HR'),
+    best('rbis', 'Batter', 'RBI'),
+    best('hits', 'Batter', 'H'),
   ];
 }
 

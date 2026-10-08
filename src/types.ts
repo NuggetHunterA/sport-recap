@@ -22,6 +22,8 @@ export interface Team {
 export interface Leader {
   stat: string;
   value: number;
+  /** Spieler, z. B. "L. Dončić" */
+  name?: string;
 }
 
 /** Punktestand nach einem Scoring-Play, aus Sicht Auswärts/Heim. */

@@ -87,8 +87,8 @@ describe('Boxscore', () => {
 describe('MLB-Bestwerte für „historisch“', () => {
   it('nimmt die höchsten Werte beider Teams', () => {
     const team = (abbr: string, bat: string[][], pit: string[][]) => ({ team: { abbreviation: abbr }, statistics: [
-      { type: 'batting', labels: ['H-AB', 'AB', 'R', 'H', 'RBI', 'HR', 'BB', 'K'], athletes: bat.map((stats) => ({ athlete: { shortName: 'X' }, stats })) },
-      { type: 'pitching', labels: ['IP', 'H', 'R', 'ER', 'BB', 'K'], athletes: pit.map((stats) => ({ athlete: { shortName: 'P' }, stats })) },
+      { type: 'batting', labels: ['H-AB', 'AB', 'R', 'H', 'RBI', 'HR', 'BB', 'K'], athletes: bat.map((stats) => ({ athlete: { shortName: `X${abbr}` }, stats })) },
+      { type: 'pitching', labels: ['IP', 'H', 'R', 'ER', 'BB', 'K'], athletes: pit.map((stats) => ({ athlete: { shortName: `P${abbr}` }, stats })) },
     ] });
     const s = { boxscore: { players: [
       team('A', [['2-4', '4', '1', '2', '7', '3', '0', '1']], [['6.0', '5', '3', '3', '2', '8']]),
@@ -96,7 +96,8 @@ describe('MLB-Bestwerte für „historisch“', () => {
     ] } };
     const g = { league: 'MLB' as const, away: { abbr: 'A' } as Game['away'], home: { abbr: 'B' } as Game['home'] };
     expect(mlbFeats(s, g)).toEqual([
-      { stat: 'strikeouts', value: 14 }, { stat: 'homeRuns', value: 3 }, { stat: 'rbis', value: 7 }, { stat: 'hits', value: 5 },
+      { stat: 'strikeouts', value: 14, name: 'PB' }, { stat: 'homeRuns', value: 3, name: 'XA' },
+      { stat: 'rbis', value: 7, name: 'XA' }, { stat: 'hits', value: 5, name: 'XB' },
     ]);
   });
 });
