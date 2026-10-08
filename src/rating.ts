@@ -27,7 +27,7 @@ interface LeagueRules {
 
 const RULES: Record<League, LeagueRules> = {
   MLB: {
-    changePeriod: 7, regulation: 9, latePeriod: 6,
+    changePeriod: 8, regulation: 9, latePeriod: 6,
     inWindow: (p) => p >= 8, windowClose: 1,
     comeback: 3, comebackMargin: 3, garbageLead: Infinity,
     margins: { normal: 2, playoff: 3, rivalry: 6, preseason: 1 },
@@ -61,7 +61,7 @@ interface Trace {
   /** Führung zu Beginn der Schlussphase und kleinster Abstand darin */
   windowStart: number;
   windowMin: number;
-  /** Ab changePeriod (MLB: 7. Inning) stand es mal unentschieden oder 1 auseinander */
+  /** Ab dem 7. Inning stand es mal unentschieden oder 1 auseinander (nur für die MLB-2-Runs-Regel) */
   lateTight: boolean;
 }
 
@@ -86,7 +86,7 @@ function trace(game: Game): Trace {
       t.lateMaxHome = Math.max(t.lateMaxHome, -lead, -cur);
     }
     // Auch der Stand vor dem Play zählt, z. B. 2:2 nach dem 6. Inning
-    if (p.period >= r.changePeriod && (Math.abs(cur) <= 1 || Math.abs(lead) <= 1)) t.lateTight = true;
+    if (p.period >= 7 && (Math.abs(cur) <= 1 || Math.abs(lead) <= 1)) t.lateTight = true;
     if (prev !== 0 && lead !== 0 && prev > 0 !== lead > 0) {
       t.changes++;
       if (p.period >= r.changePeriod) t.lateChanges++;

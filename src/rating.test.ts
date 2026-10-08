@@ -295,3 +295,19 @@ describe('MLB: heiße Phase ohne Run', () => {
     expect(rate(game('MLB', ['A', 3], ['B', 1], plays, { pressure: true })).level).toBe(3);
   });
 });
+
+describe('MLB: später Führungswechsel erst ab dem 8. Inning', () => {
+  it('Führungswechsel im 7. zu 3 Runs Abstand ist kein Drama', () => {
+    const plays = [p(0, 1, 1), p(1, 1, 2), p(3, 1, 7), p(4, 1, 9)];
+    const regular = rate(game('MLB', ['A', 4], ['B', 1], plays));
+    expect(regular.drama).toBeNull();
+    expect(regular.level).toBe(2);
+    expect(rate(game('MLB', ['A', 4], ['B', 1], plays, { season: 'playoff' })).level).toBe(3);
+  });
+  it('Führungswechsel im 8. bleibt Drama', () => {
+    expect(rate(game('MLB', ['A', 4], ['B', 1], [p(0, 1, 1), p(3, 1, 8), p(4, 1, 9)])).drama).toBe('leadchanges');
+  });
+  it('Führungswechsel im 7. zu 3:1 ohne weitere Runs: 2-Runs-Regel greift, 3 Balken', () => {
+    expect(rate(game('MLB', ['A', 3], ['B', 1], [p(0, 1, 2), p(3, 1, 7)])).level).toBe(3);
+  });
+});
