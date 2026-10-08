@@ -49,14 +49,13 @@ export interface Game {
   leaders?: Leader[];
   /** Nur MLB: Bestwerte des Spiels aus dem Boxscore (strikeouts, homeRuns, rbis, hits) */
   feats?: Leader[];
-  /** Nur MLB: Zurückliegendes Team hatte ab dem 7. Inning den Ausgleich auf Base */
-  pressure?: boolean;
+  /** Nur MLB: Runs pro Inning aus dem Scoreboard */
+  lines?: { away: number[]; home: number[] };
+  /** Nur MLB: je Halbinning (z. B. "7T", "9B") der kleinste Rückstand des schlagenden Teams abzüglich Runner auf Base */
+  halves?: Record<string, number>;
 }
 
-export type DramaKind = 'walkoff' | 'extra' | 'ot' | 'comeback' | 'leadchanges' | 'lateclose' | 'close';
-
 export interface Rating {
-  drama: DramaKind | null;
   rivalry: boolean;
   /** Beide Teams mit starker Bilanz */
   strong: boolean;
