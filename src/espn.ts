@@ -124,6 +124,40 @@ export async function withPlays(game: Game): Promise<Game> {
   }
 }
 
+/**
+ * MLB: Hatte das zurückliegende Team ab dem 7. Inning den Ausgleich auf Base oder am Schlag?
+ * Nutzt die besetzten Bases (participants onFirst/onSecond/onThird) nach jedem Play; undefined, wenn die Daten fehlen.
+ */
+export function parsePressure(plays: any[]): boolean | undefined {
+  const isRunner = (x: any) => /^on(First|Second|Third)$/.test(x?.type);
+  if (!plays.some((p) => Array.isArray(p?.participants) && p.participants.some(isRunner))) return undefined;
+  return plays.some((p) => {
+    const half = p?.period?.type;
+    if ((p?.period?.number ?? 0) < 7 || (p.outs ?? 0) >= 3 || (half !== 'Top' && half !== 'Bottom')) return false;
+    const away = parseInt(p.awayScore ?? 0, 10) || 0;
+    const home = parseInt(p.homeScore ?? 0, 10) || 0;
+    const deficit = half === 'Top' ? home - away : away - home;
+    const runners = new Set((p.participants ?? []).filter(isRunner).map((x: any) => x.type)).size;
+    return deficit > 0 && runners + 1 >= deficit;
+  });
+}
+
+/** Hängt bei MLB-Spielen mit 2 Runs Abstand die heiße Phase an: aus der Summary, sonst aus der Play-by-Play-Schnittstelle. */
+export async function withPressure(game: Game): Promise<Game> {
+  if (game.league !== 'MLB' || Math.abs(game.away.score - game.home.score) !== 2) return game;
+  try {
+    let pressure = parsePressure((await summary(game))?.plays ?? []);
+    if (pressure === undefined) {
+      const url = `https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/events/${game.id}/competitions/${game.id}/plays?limit=1000`;
+      pressure = parsePressure((await getJson(url, 24 * 60 * MINUTE))?.items ?? []);
+    }
+    return pressure === undefined ? game : { ...game, pressure };
+  } catch {
+    // Ohne diese Daten bleibt es bei der Bewertung nach Spielstand
+    return game;
+  }
+}
+
 /** Alle Ligen für mehrere Tage, Fehler einzelner Ligen werden toleriert. */
 export async function scoreboards(dates: string[]): Promise<{ games: Game[]; failed: League[] }> {
   const failed: League[] = [];

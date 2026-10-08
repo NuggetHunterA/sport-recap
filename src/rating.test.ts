@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseEvent, parseLeaders, parsePlays } from './espn';
+import { parseEvent, parseLeaders, parsePlays, parsePressure } from './espn';
 import { addDays, berlinTime, liveLabel, tierOf } from './nights';
 import { LABELS, isGarbageTime, rate, reason } from './rating';
 import type { Game, League, ScoringPlay } from './types';
@@ -212,7 +212,7 @@ describe('gespeicherte Nächte', () => {
       id: '9', league: 'NBA', start: '2026-10-06T23:30:00Z', state: 'post', season: 'preseason',
       away: { name: 'A', short: 'A', abbr: 'A', color: '#000', score: 120 }, home: { name: 'B', short: 'B', abbr: 'B', color: '#000', score: 118 }, plays: [],
     };
-    const store = new Map([['night:v4:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
+    const store = new Map([['night:v5:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
     (globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: () => {} };
     const night = await loadNight('2026-10-07');
     expect(night.games[0].rating.level).toBeLessThanOrEqual(3);
@@ -267,5 +267,30 @@ describe('Rivalität, MLB-Verlauf und historische MLB-Leistungen', () => {
       expect(r.historic).toBe(true);
       expect(r.level).toBe(4);
     }
+  });
+});
+
+describe('MLB: heiße Phase ohne Run', () => {
+  // Nach jedem Play: Inning, Hälfte, Outs, Spielstand und besetzte Bases
+  const play = (number: number, type: string, outs: number, away: number, home: number, ...bases: string[]) => ({
+    period: { type, number }, outs, awayScore: away, homeScore: home,
+    participants: [{ type: 'pitcher' }, { type: 'batter' }, ...bases.map((b) => ({ type: b }))],
+  });
+  it('Bases geladen im 7. bei 2 Runs Rückstand zählt', () => {
+    expect(parsePressure([play(3, 'Bottom', 0, 1, 0, 'onFirst'), play(7, 'Bottom', 2, 3, 1, 'onFirst', 'onSecond', 'onThird')])).toBe(true);
+  });
+  it('Ein Runner bei 2 Runs Rückstand reicht: der Batter ist der Ausgleich', () => {
+    expect(parsePressure([play(8, 'Top', 1, 1, 3, 'onSecond')])).toBe(true);
+  });
+  it('Leere Bases bei 2 Runs Rückstand, Runner vor dem 7. oder beim führenden Team zählen nicht', () => {
+    expect(parsePressure([play(7, 'Bottom', 0, 3, 1), play(6, 'Bottom', 0, 3, 1, 'onFirst', 'onSecond'), play(8, 'Top', 0, 3, 1, 'onFirst'), play(9, 'Bottom', 3, 3, 1, 'onFirst')])).toBe(false);
+  });
+  it('Ohne Daten zu besetzten Bases: unbekannt', () => {
+    expect(parsePressure([{ period: { type: 'Top', number: 7 }, outs: 0, awayScore: 0, homeScore: 2 }])).toBeUndefined();
+  });
+  it('2 Runs Abstand mit heißer Phase bleiben 3 Balken', () => {
+    const plays = [p(1, 0, 3), p(1, 1, 3), p(2, 1, 5), p(3, 1, 6)];
+    expect(rate(game('MLB', ['A', 3], ['B', 1], plays)).level).toBe(2);
+    expect(rate(game('MLB', ['A', 3], ['B', 1], plays, { pressure: true })).level).toBe(3);
   });
 });
