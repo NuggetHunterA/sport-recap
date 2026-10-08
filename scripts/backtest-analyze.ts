@@ -19,6 +19,6 @@ writeFileSync('backtest/rows.json', JSON.stringify(rows.map(({ g, old, c }) => (
   id: g.id, date: g.date, league: g.league, season: g.season,
   away: g.away.short, home: g.home.short, as: g.away.score, hs: g.home.score,
   old: old.level, oldScore: old.score, rivalry: old.rivalry, strong: old.strong, historic: old.historic,
-  final: c!.final, course: c!.course, turns: c!.turns, raw: c!.score,
+  final: c!.final, course: c!.course, turns: c!.turns, comeback: c!.comeback, raw: c!.score,
 }))));
 console.log(rows.length, 'Spiele mit Kurve von', games.length);

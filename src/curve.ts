@@ -13,6 +13,8 @@ const PERIOD: Record<'NBA' | 'NFL', { len: number; ot: number; count: number }> 
 };
 /** Ab diesem Spielfortschritt beginnt die Schlussphase (MLB: 8. Inning). */
 const FINAL_FROM = 0.77;
+/** Aufgeholter Rückstand, ab dem der Baustein Aufholjagd voll zählt. */
+const COMEBACK_FULL: Record<League, number> = { MLB: 4, NBA: 15, NFL: 17 };
 /** Ab hier zählen die letzten Minuten extra (NBA gut 2,5 Min., NFL gut 3,5 Min., MLB Bottom 9). */
 const LAST_FROM = 0.94;
 /** Gewichtete Wendungen, ab denen der Anteil voll ist. */
@@ -33,6 +35,7 @@ export interface Curve {
   final: number;
   course: number;
   turns: number;
+  comeback: number;
   score: number;
 }
 
@@ -139,5 +142,20 @@ export function curve(game: Game): Curve | null {
     if (a !== 0 && a !== b) turns += Math.min(all[i].t, 1);
   }
   const turnShare = Math.min(1, turns / TURN_CAP[game.league]);
-  return { final, course, turns: turnShare, score: 100 * (0.5 * final + 0.3 * course + 0.2 * turnShare) };
+  // Aufholjagd: größter Rückstand ab der Halbzeit, der bis in die Schlussphase wieder so weit wettgemacht wurde, dass das Spiel offen war
+  let comeback = 0;
+  const lead = { [1]: 0, [-1]: 0 } as Record<number, number>;
+  all.forEach((s, i) => {
+    if (s.t < 0.5) return;
+    for (const side of [1, -1]) {
+      lead[side] = Math.max(lead[side], side * s.margin);
+      if (s.t >= FINAL_FROM && o[i] >= 0.5) comeback = Math.max(comeback, lead[side] - Math.max(side * s.margin, 0));
+    }
+  });
+  const comebackShare = Math.min(1, comeback / COMEBACK_FULL[game.league]);
+  return {
+    final, course, turns: turnShare, comeback: comebackShare,
+    // Wendungen oder Aufholjagd, je nachdem, was das Spiel mehr geprägt hat
+    score: 100 * (0.5 * final + 0.3 * course + 0.2 * Math.max(turnShare, comebackShare) + 0.1 * comebackShare),
+  };
 }
