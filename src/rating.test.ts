@@ -234,3 +234,34 @@ describe('laufende Spiele', () => {
     expect(parseEvent('NBA', e)?.period).toBe(3);
   });
 });
+
+describe('Rivalität, MLB-Verlauf und historische MLB-Leistungen', () => {
+  it('Rivalität gibt einen Balken mehr, wenn das Spiel nicht klar war', () => {
+    expect(rate(game('MLB', ['New York Yankees', 6], ['Boston Red Sox', 2], [p(6, 2, 3)])).level).toBe(3);
+    expect(rate(game('MLB', ['A', 6], ['B', 2], [p(6, 2, 3)])).level).toBe(2);
+    expect(rate(game('NBA', ['Los Angeles Lakers', 111], ['Boston Celtics', 100], [p(60, 50, 2, 100), p(111, 100, 4, 10)])).level).toBe(3);
+    expect(rate(game('NBA', ['A', 111], ['B', 100], [p(60, 50, 2, 100), p(111, 100, 4, 10)])).level).toBe(2);
+    expect(rate(game('NBA', ['Los Angeles Lakers', 125], ['Boston Celtics', 100], [p(70, 50, 2, 100), p(125, 100, 4, 10)])).level).toBe(1);
+  });
+  it('Rivalität in der Preseason bleibt bei höchstens 3 Balken', () => {
+    expect(rate(game('NBA', ['Los Angeles Lakers', 104], ['Boston Celtics', 100], [p(100, 98, 4, 120), p(104, 100, 4, 5)], { season: 'preseason' })).level).toBeLessThanOrEqual(3);
+  });
+  it('MLB: 2 Runs Abstand ohne knappen Stand ab dem 7. Inning sind 2 Balken', () => {
+    expect(rate(game('MLB', ['A', 2], ['B', 0], [p(1, 0, 2), p(2, 0, 2)])).level).toBe(2);
+  });
+  it('MLB: 2 Runs Abstand mit Gleichstand im 7. Inning bleiben 3 Balken', () => {
+    expect(rate(game('MLB', ['A', 4], ['B', 2], [p(2, 2, 5), p(4, 2, 7)])).level).toBe(3);
+  });
+  it('MLB: ohne Spielverlauf zählt weiter nur der Abstand', () => {
+    expect(rate(game('MLB', ['A', 2], ['B', 0])).level).toBe(3);
+  });
+  it('MLB historisch: 14 Strikeouts, 3 Home Runs, 7 RBI oder 5 Hits', () => {
+    const blowout = (feats: Game['feats']) => rate(game('MLB', ['A', 9], ['B', 1], [p(5, 0, 2), p(9, 1, 6)], { feats }));
+    expect(blowout([{ stat: 'strikeouts', value: 13 }, { stat: 'homeRuns', value: 2 }]).historic).toBe(false);
+    for (const f of [{ stat: 'strikeouts', value: 14 }, { stat: 'homeRuns', value: 3 }, { stat: 'rbis', value: 7 }, { stat: 'hits', value: 5 }]) {
+      const r = blowout([f]);
+      expect(r.historic).toBe(true);
+      expect(r.level).toBe(4);
+    }
+  });
+});

@@ -47,6 +47,8 @@ export interface Game {
   home: Team;
   plays?: ScoringPlay[];
   leaders?: Leader[];
+  /** Nur MLB: Bestwerte des Spiels aus dem Boxscore (strikeouts, homeRuns, rbis, hits) */
+  feats?: Leader[];
 }
 
 export type DramaKind = 'walkoff' | 'extra' | 'ot' | 'comeback' | 'leadchanges' | 'lateclose' | 'close';
