@@ -49,7 +49,7 @@ export interface Game {
   leaders?: Leader[];
   /** Nur MLB: Bestwerte des Spiels aus dem Boxscore (strikeouts, homeRuns, rbis, hits) */
   feats?: Leader[];
-  /** Nur MLB: Zurückliegendes Team hatte ab dem 7. Inning den Ausgleich auf Base oder am Schlag */
+  /** Nur MLB: Zurückliegendes Team hatte ab dem 7. Inning den Ausgleich auf Base */
   pressure?: boolean;
 }
 
