@@ -2,7 +2,7 @@
 // Spalten werden über ihre Bezeichnung gesucht, nicht über die Position,
 // damit eine geänderte Reihenfolge bei ESPN nichts durcheinanderbringt.
 import { summary } from './espn';
-import type { Game } from './types';
+import type { Game, Leader } from './types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -241,4 +241,29 @@ export function hasBoxScore(box: BoxScore): boolean {
 
 export async function loadBoxScore(game: Game): Promise<BoxScore> {
   return parseBoxScore(await summary(game), game);
+}
+
+/** MLB: höchste Einzelwerte des Spiels, egal welches Team (für „historisch“). */
+export function mlbFeats(s: any, game: Pick<Game, 'league' | 'away' | 'home'>): Leader[] {
+  const box = parseBoxScore(s, game);
+  const tables = [...(box.away?.tables ?? []), ...(box.home?.tables ?? [])];
+  const best = (title: string, column: string) => Math.max(0, ...tables
+    .filter((t) => t.title === title)
+    .flatMap((t) => t.rows.map((r) => parseFloat(r.stats[t.columns.indexOf(column)]) || 0)));
+  return [
+    { stat: 'strikeouts', value: best('Pitcher', 'K') },
+    { stat: 'homeRuns', value: best('Batter', 'HR') },
+    { stat: 'rbis', value: best('Batter', 'RBI') },
+    { stat: 'hits', value: best('Batter', 'H') },
+  ];
+}
+
+/** Hängt bei MLB-Spielen die Bestwerte an; die Summary ist vom Spielverlauf schon zwischengespeichert. */
+export async function withFeats(game: Game): Promise<Game> {
+  if (game.league !== 'MLB') return game;
+  try {
+    return { ...game, feats: mlbFeats(await summary(game), game) };
+  } catch {
+    return game;
+  }
 }

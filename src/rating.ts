@@ -30,19 +30,19 @@ const RULES: Record<League, LeagueRules> = {
     changePeriod: 7, regulation: 9, latePeriod: 6,
     inWindow: (p) => p >= 8, windowClose: 1,
     comeback: 3, comebackMargin: 3, garbageLead: Infinity,
-    margins: { normal: 2, playoff: 3, rivalry: 3, preseason: 1 },
+    margins: { normal: 2, playoff: 3, rivalry: 6, preseason: 1 },
   },
   NBA: {
     changePeriod: 3, regulation: 4, latePeriod: 3,
     inWindow: (p, c) => (p === 4 && (c ?? 720) <= 180) || p > 4, windowClose: 5,
     comeback: 12, comebackMargin: 10, garbageLead: 10,
-    margins: { normal: 6, playoff: 10, rivalry: 10, preseason: 5 },
+    margins: { normal: 6, playoff: 10, rivalry: 19, preseason: 5 },
   },
   NFL: {
     changePeriod: 4, regulation: 4, latePeriod: 3,
     inWindow: (p, c) => (p === 4 && (c ?? 900) <= 300) || p > 4, windowClose: 8,
     comeback: 14, comebackMargin: 10, garbageLead: 14,
-    margins: { normal: 8, playoff: 14, rivalry: 10, preseason: 3 },
+    margins: { normal: 8, playoff: 14, rivalry: 20, preseason: 3 },
   },
 };
 
@@ -61,6 +61,8 @@ interface Trace {
   /** Führung zu Beginn der Schlussphase und kleinster Abstand darin */
   windowStart: number;
   windowMin: number;
+  /** Ab changePeriod (MLB: 7. Inning) stand es mal unentschieden oder 1 auseinander */
+  lateTight: boolean;
 }
 
 function trace(game: Game): Trace {
@@ -69,7 +71,7 @@ function trace(game: Game): Trace {
   const t: Trace = {
     maxAway: 0, maxHome: 0, lateMaxAway: 0, lateMaxHome: 0, changes: 0, lateChanges: 0,
     lateClose: false, extra: false, walkoffText: false, before: 0, lastPeriod: 0,
-    windowStart: final, windowMin: Math.abs(final),
+    windowStart: final, windowMin: Math.abs(final), lateTight: false,
   };
   let prev = 0;
   let cur = 0;
@@ -83,6 +85,8 @@ function trace(game: Game): Trace {
       t.lateMaxAway = Math.max(t.lateMaxAway, lead, cur);
       t.lateMaxHome = Math.max(t.lateMaxHome, -lead, -cur);
     }
+    // Auch der Stand vor dem Play zählt, z. B. 2:2 nach dem 6. Inning
+    if (p.period >= r.changePeriod && (Math.abs(cur) <= 1 || Math.abs(lead) <= 1)) t.lateTight = true;
     if (prev !== 0 && lead !== 0 && prev > 0 !== lead > 0) {
       t.changes++;
       if (p.period >= r.changePeriod) t.lateChanges++;
@@ -194,20 +198,26 @@ const HISTORIC: Record<string, number> = {
   passingYards: 450, rushingYards: 200, receivingYards: 200, // NFL
 };
 
-/** No-Hitter (MLB) oder herausragende Einzelleistung. Verrät nicht, welches Team. */
+/** MLB-Einzelleistungen aus dem Boxscore (Pitcher-Strikeouts, Home Runs, RBI, Hits eines Batters). */
+const HISTORIC_MLB: Record<string, number> = { strikeouts: 14, homeRuns: 3, rbis: 7, hits: 5 };
+
+/** No-Hitter oder herausragende Einzelleistung. Verrät nicht, welches Team. */
 function isHistoric(game: Game): boolean {
   if (game.league === 'MLB') {
-    return game.away.hits === 0 || game.home.hits === 0;
+    return game.away.hits === 0 || game.home.hits === 0
+      || (game.feats ?? []).some((f) => HISTORIC_MLB[f.stat] !== undefined && f.value >= HISTORIC_MLB[f.stat]);
   }
   return (game.leaders ?? []).some((l) => HISTORIC[l.stat] !== undefined && l.value >= HISTORIC[l.stat]);
 }
 
 /** Spannung aus den Regeln. */
-function ruleScore(game: Game, d: DramaKind | null, margin: number): number {
+function ruleScore(game: Game, d: DramaKind | null, margin: number, t: Trace): number {
   const m = RULES[game.league].margins;
   const limit = game.season === 'preseason' ? m.preseason : m.normal;
   if (d && BIG.includes(d)) return 85;
   if (d === 'leadchanges' || d === 'lateclose') return 65;
+  // MLB: 2 Runs Abstand ist nur eng, wenn es ab dem 7. Inning noch knapp war (ohne Spielverlauf wie bisher)
+  if (game.league === 'MLB' && !d && margin === 2 && game.plays?.length && !t.lateTight) return 30;
   if (d || margin <= limit) return 50;
   return margin <= limit * 2 ? 30 : 10;
 }
@@ -216,6 +226,9 @@ function ruleScore(game: Game, d: DramaKind | null, margin: number): number {
 const PRESEASON_MAX = 57;
 
 const BIG: DramaKind[] = ['walkoff', 'extra', 'ot', 'comeback'];
+
+/** Mindestwert je Balkenzahl, passend zu levelOf */
+const LEVEL_MIN = [0, 0, 25, 42, 58, 75];
 
 function levelOf(score: number): number {
   return score >= 75 ? 5 : score >= 58 ? 4 : score >= 42 ? 3 : score >= 25 ? 2 : 1;
@@ -232,13 +245,14 @@ export function rate(game: Game): Rating {
   const historic = isHistoric(game);
   const big = d !== null && BIG.includes(d);
 
-  let score = ruleScore(game, d, margin);
-  // Rivalität und Playoffs zählen nur, wenn das Spiel nicht völlig einseitig war
+  let score = ruleScore(game, d, margin, t);
+  // Playoffs zählen nur, wenn das Spiel nicht völlig einseitig war
   if (playoff && margin <= m.playoff) score += 12;
-  if (rivalry && margin <= m.rivalry) score += 12;
   if (strong) score += 6;
   if (big) score = Math.max(score, 70);
   if (historic) score = Math.max(score, 65);
+  // Rivalität: ein Balken mehr, außer bei einer Klatsche (MLB ab 7 Runs, NBA ab 20, NFL ab 21 Punkten)
+  if (rivalry && margin <= m.rivalry) score = Math.max(score, LEVEL_MIN[Math.min(5, levelOf(score) + 1)]);
   // Preseason ist nie Pflichtprogramm: höchstens 3 von 5 Balken
   if (game.season === 'preseason') score = Math.min(score, PRESEASON_MAX);
   score = Math.min(100, Math.max(0, Math.round(score)));

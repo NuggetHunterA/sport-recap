@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasBoxScore, parseBoxScore } from './boxscore';
+import { hasBoxScore, mlbFeats, parseBoxScore } from './boxscore';
 import type { Game } from './types';
 
 const team = (abbr: string) => ({ name: abbr, short: abbr, abbr, color: '#000', score: 0 });
@@ -81,5 +81,22 @@ describe('Boxscore', () => {
   it('fehlende Daten ergeben einen leeren Boxscore statt eines Fehlers', () => {
     expect(hasBoxScore(parseBoxScore({}, game('NBA')))).toBe(false);
     expect(hasBoxScore(parseBoxScore(null, game('MLB')))).toBe(false);
+  });
+});
+
+describe('MLB-Bestwerte für „historisch“', () => {
+  it('nimmt die höchsten Werte beider Teams', () => {
+    const team = (abbr: string, bat: string[][], pit: string[][]) => ({ team: { abbreviation: abbr }, statistics: [
+      { type: 'batting', labels: ['H-AB', 'AB', 'R', 'H', 'RBI', 'HR', 'BB', 'K'], athletes: bat.map((stats) => ({ athlete: { shortName: 'X' }, stats })) },
+      { type: 'pitching', labels: ['IP', 'H', 'R', 'ER', 'BB', 'K'], athletes: pit.map((stats) => ({ athlete: { shortName: 'P' }, stats })) },
+    ] });
+    const s = { boxscore: { players: [
+      team('A', [['2-4', '4', '1', '2', '7', '3', '0', '1']], [['6.0', '5', '3', '3', '2', '8']]),
+      team('B', [['5-5', '5', '2', '5', '1', '0', '0', '0']], [['9.0', '2', '0', '0', '0', '14']]),
+    ] } };
+    const g = { league: 'MLB' as const, away: { abbr: 'A' } as Game['away'], home: { abbr: 'B' } as Game['home'] };
+    expect(mlbFeats(s, g)).toEqual([
+      { stat: 'strikeouts', value: 14 }, { stat: 'homeRuns', value: 3 }, { stat: 'rbis', value: 7 }, { stat: 'hits', value: 5 },
+    ]);
   });
 });

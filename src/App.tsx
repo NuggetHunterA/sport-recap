@@ -108,10 +108,10 @@ function NightView(props: {
     // Meiste Balken zuerst, bei Gleichstand Playoffs und höherer Spannungswert
     const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => b.rating.level - a.rating.level || a.rating.sortKey - b.rating.sortKey);
     const isFav = (g: { game: Game }) => favoriteOf(g.game, favorites) !== null;
-    // Ohne Ligafilter stellt die NFL nur mit Lieblingsteam das Spiel der Nacht oder einen Top-Tipp
+    // Ohne Ligafilter stellt die NFL nur mit Lieblingsteam einen Top-Tipp und nie das Spiel der Nacht
     const eligible = (g: RatedGame) => filter !== 'Alle' || g.game.league !== 'NFL' || isFav(g);
     // Das spannendste sehenswerte Spiel, egal wie viele Balken
-    const hero = hotSorted.filter(eligible).sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
+    const hero = hotSorted.filter((g) => filter !== 'Alle' || g.game.league !== 'NFL').sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
     const favs = favorites
       .filter((f) => filter === 'Alle' || f.league === filter)
       .map((f) => ({ fav: f, item: shown.find((g) => favoriteOf(g.game, [f])) }))
