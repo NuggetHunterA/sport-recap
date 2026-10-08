@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseEvent, parseLeaders, parsePlays } from './espn';
 import { addDays, berlinTime, liveLabel, tierOf } from './nights';
-import { isGarbageTime, rate, reason } from './rating';
+import { LABELS, isGarbageTime, rate, reason } from './rating';
 import type { Game, League, ScoringPlay } from './types';
 
 function game(league: League, away: [string, number], home: [string, number], plays: ScoringPlay[] = [], extra: Partial<Game> = {}): Game {
@@ -15,7 +15,7 @@ describe('MLB', () => {
     const r = rate(game('MLB', ['Milwaukee Brewers', 4], ['San Diego Padres', 5], [p(2, 0, 3), p(4, 3, 6), p(4, 5, 9)]));
     expect(r.drama).toBe('walkoff');
     expect(r.level).toBe(5);
-    expect(r.reason).toBe('Krimi bis zum Schluss');
+    expect(LABELS.drama).toContain(r.reason);
   });
   it('Extra Innings', () => {
     expect(rate(game('MLB', ['A', 3], ['B', 2], [p(1, 1, 2), p(2, 2, 7), p(3, 2, 11)])).drama).toBe('extra');
@@ -24,13 +24,13 @@ describe('MLB', () => {
     const r = rate(game('MLB', ['A', 9], ['B', 1], [p(5, 0, 2), p(9, 1, 6)]));
     expect(r.hot).toBe(false);
     expect(r.level).toBe(1);
-    expect(r.reason).toBe('Kannst du auslassen');
+    expect(LABELS.skip).toContain(r.reason);
   });
   it('Rivalität mit 3 Runs Abstand ist sehenswert', () => {
     const r = rate(game('MLB', ['New York Yankees', 5], ['Boston Red Sox', 2], [p(5, 2, 4)]));
     expect(r.rivalry).toBe(true);
     expect(r.hot).toBe(true);
-    expect(r.reason).toBe('Rivalitätsduell');
+    expect(LABELS.rivalry).toContain(r.reason);
   });
   it('Preseason nur bei sehr engem Spiel', () => {
     expect(rate(game('MLB', ['A', 4], ['B', 2], [], { season: 'preseason' })).hot).toBe(false);
@@ -44,7 +44,7 @@ describe('NBA', () => {
   it('Comeback nach 15 Punkten Rückstand', () => {
     const r = rate(game('NBA', ['A', 110], ['B', 100], [p(10, 25, 2, 300), p(110, 100, 4, 10)]));
     expect(r.drama).toBe('comeback');
-    expect(r.reason).toBe('Comeback');
+    expect(LABELS.drama).toContain(r.reason);
   });
   it('Spannende Schlussphase', () => {
     const r = rate(game('NBA', ['A', 104], ['B', 98], [p(90, 80, 3, 100), p(100, 97, 4, 120), p(104, 98, 4, 5)]));
@@ -57,7 +57,7 @@ describe('NFL', () => {
   it('Führungswechsel im 4. Viertel', () => {
     const r = rate(game('NFL', ['Kansas City Chiefs', 28], ['Jacksonville Jaguars', 31], [p(21, 17, 3), p(28, 24, 4, 600), p(28, 31, 4, 40)]));
     expect(r.drama).toBe('leadchanges');
-    expect(r.reason).toBe('Hin und her bis zuletzt');
+    expect(LABELS.drama).toContain(r.reason);
   });
   it('Blowout', () => {
     expect(rate(game('NFL', ['A', 42], ['B', 10], [p(21, 3, 2), p(42, 10, 4)])).level).toBe(1);
@@ -71,6 +71,20 @@ describe('spoilerfreie Gründe', () => {
       const text = reason({ drama: k, hot: true, rivalry: false, playoff: false });
       expect(text).not.toMatch(/walk-off|sieg|gewinn|verlier|heim|auswärts/i);
     }
+    // Kein Label verrät Comeback oder Verlängerung
+    expect(Object.values(LABELS).flat().join(' ')).not.toMatch(/comeback|overtime|verlängerung|extra|walk-off/i);
+  });
+  it('Comeback, Extra Innings, Overtime und Führungswechsel teilen sich dieselben Labels', () => {
+    for (const k of ['walkoff', 'extra', 'ot', 'comeback', 'leadchanges', 'lateclose'] as const) {
+      for (const seed of ['1', '2', '3', '4', '5', '6']) expect(LABELS.drama).toContain(reason({ drama: k, hot: true, rivalry: false, playoff: false }, seed));
+    }
+  });
+  it('mehrere Punkte: Label aus allen passenden Töpfen, für dieselbe ID immer gleich', () => {
+    const r = { drama: 'comeback' as const, hot: true, rivalry: true, playoff: false };
+    const seen = new Set(Array.from({ length: 60 }, (_, i) => reason(r, String(i))));
+    expect([...seen].some((x) => LABELS.rivalry.includes(x))).toBe(true);
+    expect([...seen].some((x) => LABELS.drama.includes(x))).toBe(true);
+    expect(reason(r, '401')).toBe(reason(r, '401'));
   });
 });
 
@@ -171,7 +185,7 @@ describe('verbesserte Bewertung', () => {
   it('No-Hitter und 50-Punkte-Spiel sind historisch, auch bei klarem Ergebnis', () => {
     const nh = game('MLB', ['A', 0], ['B', 6]);
     nh.away.hits = 0;
-    expect(rate(nh).reason).toBe('Historischer Abend');
+    expect(LABELS.historic).toContain(rate(nh).reason);
     expect(rate(game('NBA', ['A', 130], ['B', 100], [], { leaders: [{ stat: 'points', value: 52 }] })).level).toBeGreaterThanOrEqual(4);
   });
   it('Preseason bekommt höchstens 3 Balken, auch bei Overtime', () => {
