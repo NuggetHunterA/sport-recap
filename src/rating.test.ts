@@ -48,6 +48,9 @@ describe('Spannungskurve: Regeln', () => {
     expect(rate(mlb([1, 0, 0, 0, 0, 0, 0, 1, 0, 1], [0, 1, 0, 0, 0, 0, 1, 0, 1, 0])).level).toBe(5);
     expect(rate(mlb([4, 3, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0])).level).toBe(1);
   });
+  it('MLB: 0:0 bis ins 9. Inning (Pitchers\' Duel) ist sehenswert, mit Gleichstand am Ende Stufe 4', () => {
+    expect(rate(mlb([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0])).level).toBe(4);
+  });
   it('MLB: Runner auf Base verringern den Rückstand', () => {
     const lines = { away: [0, 0, 2, 0, 0, 0, 0, 0, 0], home: [0, 0, 0, 0, 0, 0, 0, 0, 0] };
     const without = rate(mlb(lines.away, lines.home));

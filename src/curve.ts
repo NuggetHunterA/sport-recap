@@ -17,6 +17,8 @@ const FINAL_FROM = 0.77;
 const COMEBACK_FULL: Record<League, number> = { MLB: 4, NBA: 15, NFL: 17 };
 /** Ab hier zählen die letzten Minuten extra (NBA gut 2,5 Min., NFL gut 3,5 Min., MLB Bottom 9). */
 const LAST_FROM = 0.94;
+/** Ab hier zählt ein Gleichstand als halbe Wendung (MLB ab dem 9. Inning, NBA letzte gut 5 Min., NFL letzte knapp 7 Min.). */
+const TIE_FROM = 0.88;
 /** Gewichtete Wendungen, ab denen der Anteil voll ist. */
 const TURN_CAP: Record<League, number> = { MLB: 2, NBA: 5, NFL: 3 };
 
@@ -141,7 +143,9 @@ export function curve(game: Game): Curve | null {
     const b = Math.sign(all[i].margin);
     if (a !== 0 && a !== b) turns += Math.min(all[i].t, 1);
   }
-  const turnShare = Math.min(1, turns / TURN_CAP[game.league]);
+  // Ein Gleichstand ganz am Ende zählt mindestens als halbe Wendung, z. B. ein 0:0 bis ins 9. Inning
+  const lateTie = all.some((s) => s.t >= TIE_FROM && s.margin === 0);
+  const turnShare = Math.max(Math.min(1, turns / TURN_CAP[game.league]), lateTie ? 0.5 : 0);
   // Aufholjagd: größter Rückstand ab der Halbzeit, der bis in die Schlussphase wieder so weit wettgemacht wurde, dass das Spiel offen war
   let comeback = 0;
   const lead = { [1]: 0, [-1]: 0 } as Record<number, number>;
