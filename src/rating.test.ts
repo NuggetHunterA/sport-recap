@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseEvent, parseHalves, parseLeaders, parsePlays } from './espn';
 import spiele from './fixtures/spiele.json';
 import { addDays, berlinTime, liveLabel, tierOf } from './nights';
-import { LABELS, rate, reason } from './rating';
+import { LABELS, historicFeats, rate, reason } from './rating';
 import type { Game, League, ScoringPlay } from './types';
 
 function game(league: League, away: [string, number], home: [string, number], plays: ScoringPlay[] = [], extra: Partial<Game> = {}): Game {
@@ -48,6 +48,9 @@ describe('Spannungskurve: Regeln', () => {
     expect(rate(mlb([1, 0, 0, 0, 0, 0, 0, 1, 0, 1], [0, 1, 0, 0, 0, 0, 1, 0, 1, 0])).level).toBe(5);
     expect(rate(mlb([4, 3, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0])).level).toBe(1);
   });
+  it('MLB: 0:0 bis ins 9. Inning (Pitchers\' Duel) ist sehenswert, mit Gleichstand am Ende Stufe 4', () => {
+    expect(rate(mlb([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0])).level).toBe(4);
+  });
   it('MLB: Runner auf Base verringern den Rückstand', () => {
     const lines = { away: [0, 0, 2, 0, 0, 0, 0, 0, 0], home: [0, 0, 0, 0, 0, 0, 0, 0, 0] };
     const without = rate(mlb(lines.away, lines.home));
@@ -75,6 +78,19 @@ describe('Spannungskurve: Regeln', () => {
     expect(rate(nh).level).toBe(3);
     expect(LABELS.historic).toContain(rate(nh).reason);
     expect(rate(game('NBA', ['A', 130], ['B', 100], [p(70, 50, 2, 0), p(130, 100, 4, 0)], { leaders: [{ stat: 'points', value: 52 }] })).level).toBe(3);
+  });
+  it('historische Leistung zählt zum Kontext, wenn das Spiel ohnehin mindestens 3 Balken hat', () => {
+    const plays = [p(0, 7, 1), p(7, 7, 2), p(14, 10, 3), p(17, 17, 4, 400), p(20, 17, 4, 120)];
+    const leaders = [{ stat: 'passingYards', value: 455, name: 'J. Allen' }];
+    expect(rate(game('NFL', ['A', 20], ['B', 17], plays, { leaders })).score)
+      .toBeGreaterThan(rate(game('NFL', ['A', 20], ['B', 17], plays)).score);
+  });
+  it('nennt die historische Leistung mit Spieler bzw. Team', () => {
+    expect(historicFeats(game('NBA', ['A', 130], ['B', 100], [], { leaders: [{ stat: 'points', value: 52, name: 'L. Dončić' }, { stat: 'rebounds', value: 12 }] })))
+      .toEqual([{ label: '52 Punkte', name: 'L. Dončić' }]);
+    const nh = mlb([0, 0, 0, 0, 0, 0, 0, 0, 0], [3, 2, 1, 0, 0, 0, 0, 0]);
+    nh.away.hits = 0;
+    expect(historicFeats(nh)).toEqual([{ label: 'No-Hitter', name: 'B' }]);
   });
   it('MLB historisch: 14 Strikeouts, 3 Home Runs, 7 RBI oder 5 Hits', () => {
     const blowout = (feats: Game['feats']) => rate(mlb([5, 0, 0, 0, 0, 4, 0, 0, 0], [0, 0, 0, 0, 0, 1, 0, 0, 0], { feats }));
@@ -242,7 +258,7 @@ describe('gespeicherte Nächte', () => {
       id: '9', league: 'NBA', start: '2026-10-06T23:30:00Z', state: 'post', season: 'preseason',
       away: { name: 'A', short: 'A', abbr: 'A', color: '#000', score: 120 }, home: { name: 'B', short: 'B', abbr: 'B', color: '#000', score: 118 }, plays: [],
     };
-    const store = new Map([['night:v7:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
+    const store = new Map([['night:v8:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
     (globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: () => {} };
     const night = await loadNight('2026-10-07');
     expect(night.games[0].rating.level).toBeLessThanOrEqual(3);

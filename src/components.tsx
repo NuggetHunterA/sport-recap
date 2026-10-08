@@ -1,9 +1,10 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { formatTime, liveLabel } from './nights';
 import type { RatedGame, Tier, Upcoming } from './nights';
 import type { Game, Team } from './types';
 import type { Favorite } from './favorites';
+import { historicFeats } from './rating';
 import { TEAMS } from './teams';
 
 export const Icon = {
@@ -17,6 +18,7 @@ export const Icon = {
   star: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 6.9L12 17.6 5.7 21l1.5-6.9L2 9.3l7-.8z" /></svg>,
   starFilled: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 6.9L12 17.6 5.7 21l1.5-6.9L2 9.3l7-.8z" /></svg>,
   left: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>,
+  trophy: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" /></svg>,
   right: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>,
 };
 
@@ -73,6 +75,24 @@ function Score({ game, open }: { game: Game; open: boolean }) {
     : <span class="blur" aria-hidden="true">88 : 88</span>;
 }
 
+/** Historische Einzelleistung, erst nach dem Aufdecken sichtbar (Name verrät das Team). Beim Aufdecken mit eigener Animation. */
+function Feats({ game, open }: { game: Game; open: boolean }) {
+  // Nur feiern, wenn das Spiel gerade aufgedeckt wurde, nicht bei schon aufgedeckten Spielen beim Laden
+  const closedAtStart = useRef(!open);
+  const feats = open ? historicFeats(game) : [];
+  if (!feats.length) return null;
+  return (
+    <div class={`feat-band${closedAtStart.current ? ' celebrate' : ''}`}>
+      {closedAtStart.current && <span class="sparks" aria-hidden="true">{[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <i key={i} />)}</span>}
+      <span class="feat-icon">{Icon.trophy}</span>
+      <div>
+        <small>Historische Leistung</small>
+        {feats.map((f) => <b key={f.label}>{f.label}{f.name && <span> · {f.name}</span>}</b>)}
+      </div>
+    </div>
+  );
+}
+
 function label(game: Game): string {
   if (game.note) return game.note;
   return game.season === 'preseason' ? 'Preseason' : game.season === 'playoff' ? 'Playoffs' : 'Regular Season';
@@ -101,6 +121,7 @@ export function Hero({ item, open, toggle, onBox }: CardProps) {
               : <button type="button" class="big-score" onClick={toggle} aria-label="Ergebnis aufdecken"><Score game={game} open={open} /></button>}
             <div class="side" style={colors(game.home)}><span class="disc"><Badge team={game.home} size={60} light /></span><span class="side-name">{game.home.short}</span></div>
           </div>
+          <Feats game={game} open={open} />
           <div class="jersey-stripes" aria-hidden="true">
             <span style={colors(game.away)} /><span style={colors(game.home)} />
           </div>
@@ -144,6 +165,7 @@ export function GameCard({ item, open, toggle, onBox }: CardProps) {
           <Score game={game} open={open} />
         </button>
       </div>
+      <Feats game={game} open={open} />
       {open && onBox && <CardFoot onBox={onBox} />}
     </Shell>
   );
