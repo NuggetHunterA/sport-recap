@@ -1,0 +1,29 @@
+name: Backtest
+
+# Nur auf dem Branch "backtest": lädt die Spiele und legt sie im Branch ab.
+on:
+  push:
+    branches: [backtest]
+    paths: [scripts/backtest-fetch.ts, .github/workflows/backtest.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vite-node scripts/backtest-fetch.ts
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add backtest
+          git commit -m "Backtest-Daten"
+          git push
