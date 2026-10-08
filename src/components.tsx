@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { formatTime, liveLabel } from './nights';
 import type { RatedGame, Tier, Upcoming } from './nights';
@@ -75,43 +75,20 @@ function Score({ game, open }: { game: Game; open: boolean }) {
     : <span class="blur" aria-hidden="true">88 : 88</span>;
 }
 
-// Entwurfsauswahl für die Screenshots, z. B. ?feat=b
-const FEAT_STYLE = new URLSearchParams(location.search).get('feat') ?? 'a';
-
-/** Historische Einzelleistung, erst nach dem Aufdecken sichtbar (Name verrät das Team). */
+/** Historische Einzelleistung, erst nach dem Aufdecken sichtbar (Name verrät das Team). Beim Aufdecken mit eigener Animation. */
 function Feats({ game, open }: { game: Game; open: boolean }) {
+  // Nur feiern, wenn das Spiel gerade aufgedeckt wurde, nicht bei schon aufgedeckten Spielen beim Laden
+  const closedAtStart = useRef(!open);
   const feats = open ? historicFeats(game) : [];
   if (!feats.length) return null;
-  if (FEAT_STYLE === 'b') {
-    return (
-      <div class="feat-band">
-        <span class="feat-icon">{Icon.trophy}</span>
-        <div>
-          <small>Historische Leistung</small>
-          {feats.map((f) => <b key={f.label}>{f.label}{f.name && <span> · {f.name}</span>}</b>)}
-        </div>
-      </div>
-    );
-  }
-  if (FEAT_STYLE === 'c') {
-    return (
-      <div class="feat-medals">
-        {feats.map((f) => {
-          const [num, ...unit] = f.label.split(' ');
-          const numeric = /^\d+$/.test(num);
-          return (
-            <div class="feat-medal" key={f.label}>
-              <span class="medal"><b>{numeric ? num : 'NH'}</b></span>
-              <div><b>{numeric ? unit.join(' ') : f.label}</b><small>{f.name}</small></div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
   return (
-    <div class="feat-pills">
-      {feats.map((f) => <span class="feat-pill" key={f.label}>{Icon.trophy} {f.label}{f.name && ` · ${f.name}`}</span>)}
+    <div class={`feat-band${closedAtStart.current ? ' celebrate' : ''}`}>
+      {closedAtStart.current && <span class="sparks" aria-hidden="true">{[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <i key={i} />)}</span>}
+      <span class="feat-icon">{Icon.trophy}</span>
+      <div>
+        <small>Historische Leistung</small>
+        {feats.map((f) => <b key={f.label}>{f.label}{f.name && <span> · {f.name}</span>}</b>)}
+      </div>
     </div>
   );
 }
