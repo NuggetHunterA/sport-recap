@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseEvent, parseLeaders, parsePlays, parsePressure } from './espn';
+import { parseEvent, parseHalves, parseLeaders, parsePlays } from './espn';
+import spiele from './fixtures/spiele.json';
 import { addDays, berlinTime, liveLabel, tierOf } from './nights';
-import { LABELS, isGarbageTime, rate, reason } from './rating';
+import { LABELS, rate, reason } from './rating';
 import type { Game, League, ScoringPlay } from './types';
 
 function game(league: League, away: [string, number], home: [string, number], plays: ScoringPlay[] = [], extra: Partial<Game> = {}): Game {
@@ -10,81 +11,111 @@ function game(league: League, away: [string, number], home: [string, number], pl
 }
 const p = (away: number, home: number, period: number, clock?: number, text?: string): ScoringPlay => ({ away, home, period, clock, text });
 
-describe('MLB', () => {
-  it('erkennt Walk-off ohne Text: Heimteam dreht im 9. Inning', () => {
-    const r = rate(game('MLB', ['Milwaukee Brewers', 4], ['San Diego Padres', 5], [p(2, 0, 3), p(4, 3, 6), p(4, 5, 9)]));
-    expect(r.drama).toBe('walkoff');
-    expect(r.level).toBe(5);
-    expect(LABELS.drama).toContain(r.reason);
+/** MLB-Spiel aus Runs pro Inning */
+function mlb(away: number[], home: number[], extra: Partial<Game> = {}): Game {
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+  return game('MLB', ['A', sum(away)], ['B', sum(home)], [], { lines: { away, home }, ...extra });
+}
+const real = (name: keyof typeof spiele) => spiele[name] as unknown as Game;
+
+describe('Spannungskurve: echte Spiele der letzten Saison', () => {
+  it.each([
+    ['Dodgers 5:4 Blue Jays', 5], // World Series Game 7, 11 Innings
+    ['Phillies 1:2 Dodgers', 5], // NLDS, 11 Innings
+    ['Knicks 105:104 Spurs', 5], // NBA Finals, 14 Punkte Rückstand 6 Minuten vor Schluss aufgeholt
+    ['Packers 27:31 Bears', 4], // NFL Playoffs, drei Viertel klar, dann Aufholjagd
+    ['Rangers 7:4 Cardinals', 3], // offen bis ins 9. Inning
+    ['Celtics 109:108 76ers', 2], // erst in den letzten Sekunden eng
+    ['Jazz 97:137 Timberwolves', 1],
+  ] as const)('%s: %i Balken', (name, level) => {
+    expect(rate(real(name)).level).toBe(level);
   });
-  it('Extra Innings', () => {
-    expect(rate(game('MLB', ['A', 3], ['B', 2], [p(1, 1, 2), p(2, 2, 7), p(3, 2, 11)])).drama).toBe('extra');
-  });
-  it('Klarer Sieg ist nicht sehenswert', () => {
-    const r = rate(game('MLB', ['A', 9], ['B', 1], [p(5, 0, 2), p(9, 1, 6)]));
-    expect(r.hot).toBe(false);
-    expect(r.level).toBe(1);
-    expect(LABELS.skip).toContain(r.reason);
-  });
-  it('Rivalität mit 3 Runs Abstand ist sehenswert', () => {
-    const r = rate(game('MLB', ['New York Yankees', 5], ['Boston Red Sox', 2], [p(5, 2, 4)]));
-    expect(r.rivalry).toBe(true);
-    expect(r.hot).toBe(true);
-    expect(LABELS.rivalry).toContain(r.reason);
-  });
-  it('Preseason nur bei sehr engem Spiel', () => {
-    expect(rate(game('MLB', ['A', 4], ['B', 2], [], { season: 'preseason' })).hot).toBe(false);
+  it('verrät nicht, wer gewonnen hat: Heim und Auswärts getauscht ergibt dieselbe Stufe', () => {
+    for (const name of Object.keys(spiele) as (keyof typeof spiele)[]) {
+      const g = real(name);
+      const swapped: Game = {
+        ...g, away: g.home, home: g.away,
+        plays: g.plays?.map((x) => ({ ...x, away: x.home, home: x.away })),
+      };
+      if (g.league === 'MLB') continue; // Halbinnings sind nicht spiegelbar (Heim schlägt zuletzt)
+      expect(rate(swapped).level, name).toBe(rate(g).level);
+    }
   });
 });
 
-describe('NBA', () => {
-  it('Overtime', () => {
-    expect(rate(game('NBA', ['A', 120], ['B', 118], [p(100, 100, 4, 0), p(120, 118, 5, 0)])).drama).toBe('ot');
+describe('Spannungskurve: Regeln', () => {
+  it('MLB: Hin und her bis in die Extra Innings ist Stufe 5, früh klar ist Stufe 1', () => {
+    expect(rate(mlb([1, 0, 0, 0, 0, 0, 0, 1, 0, 1], [0, 1, 0, 0, 0, 0, 1, 0, 1, 0])).level).toBe(5);
+    expect(rate(mlb([4, 3, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0])).level).toBe(1);
   });
-  it('Comeback nach 15 Punkten Rückstand', () => {
-    const r = rate(game('NBA', ['A', 110], ['B', 100], [p(10, 25, 2, 300), p(110, 100, 4, 10)]));
-    expect(r.drama).toBe('comeback');
-    expect(LABELS.drama).toContain(r.reason);
+  it('MLB: Runner auf Base verringern den Rückstand', () => {
+    const lines = { away: [0, 0, 2, 0, 0, 0, 0, 0, 0], home: [0, 0, 0, 0, 0, 0, 0, 0, 0] };
+    const without = rate(mlb(lines.away, lines.home));
+    const loaded = rate(mlb(lines.away, lines.home, { halves: { '7B': 0, '8B': 0, '9B': 0 } }));
+    expect(loaded.score).toBeGreaterThan(without.score);
   });
-  it('Spannende Schlussphase', () => {
-    const r = rate(game('NBA', ['A', 104], ['B', 98], [p(90, 80, 3, 100), p(100, 97, 4, 120), p(104, 98, 4, 5)]));
-    expect(r.drama).toBe('lateclose');
-    expect(r.level).toBe(4);
+  it('NBA: klare Führung, die erst am Ende schrumpft (Garbage Time), ist nicht sehenswert', () => {
+    expect(rate(game('NBA', ['A', 104], ['B', 98], [p(60, 40, 2, 0), p(100, 80, 4, 200), p(104, 98, 4, 10)])).hot).toBe(false);
   });
-});
-
-describe('NFL', () => {
-  it('Führungswechsel im 4. Viertel', () => {
-    const r = rate(game('NFL', ['Kansas City Chiefs', 28], ['Jacksonville Jaguars', 31], [p(21, 17, 3), p(28, 24, 4, 600), p(28, 31, 4, 40)]));
-    expect(r.drama).toBe('leadchanges');
-    expect(LABELS.drama).toContain(r.reason);
-  });
-  it('Blowout', () => {
+  it('NFL: Blowout ist Stufe 1', () => {
     expect(rate(game('NFL', ['A', 42], ['B', 10], [p(21, 3, 2), p(42, 10, 4)])).level).toBe(1);
+  });
+  it('Playoffs, Rivalität und Topduell heben klare Spiele nicht an', () => {
+    const blowout = (extra: Partial<Game>) => rate(game('NFL', ['Kansas City Chiefs', 42], ['Las Vegas Raiders', 10], [p(21, 3, 2), p(42, 10, 4)], extra));
+    expect(blowout({ season: 'playoff' }).level).toBe(1);
+  });
+  it('Playoffs geben bei offenen Spielen einen Bonus', () => {
+    const plays = [p(0, 7, 1), p(7, 7, 2), p(14, 10, 3), p(17, 17, 4, 400), p(20, 17, 4, 120)];
+    expect(rate(game('NFL', ['A', 20], ['B', 17], plays, { season: 'playoff' })).score)
+      .toBeGreaterThan(rate(game('NFL', ['A', 20], ['B', 17], plays)).score);
+  });
+  it('No-Hitter und 50-Punkte-Spiel heben auf mindestens 3 Balken', () => {
+    const nh = mlb([0, 0, 0, 0, 0, 0, 0, 0, 0], [3, 2, 1, 0, 0, 0, 0, 0]);
+    nh.away.hits = 0;
+    expect(rate(nh).level).toBe(3);
+    expect(LABELS.historic).toContain(rate(nh).reason);
+    expect(rate(game('NBA', ['A', 130], ['B', 100], [p(70, 50, 2, 0), p(130, 100, 4, 0)], { leaders: [{ stat: 'points', value: 52 }] })).level).toBe(3);
+  });
+  it('MLB historisch: 14 Strikeouts, 3 Home Runs, 7 RBI oder 5 Hits', () => {
+    const blowout = (feats: Game['feats']) => rate(mlb([5, 0, 0, 0, 0, 4, 0, 0, 0], [0, 0, 0, 0, 0, 1, 0, 0, 0], { feats }));
+    expect(blowout([{ stat: 'strikeouts', value: 13 }, { stat: 'homeRuns', value: 2 }]).historic).toBe(false);
+    for (const f of [{ stat: 'strikeouts', value: 14 }, { stat: 'homeRuns', value: 3 }, { stat: 'rbis', value: 7 }, { stat: 'hits', value: 5 }]) {
+      expect(blowout([f]).level).toBe(3);
+    }
+  });
+  it('Preseason bekommt höchstens 3 Balken', () => {
+    const r = rate(game('NBA', ['A', 120], ['B', 118], [p(100, 100, 4, 60), p(108, 108, 4, 0), p(120, 118, 5, 0)], { season: 'preseason' }));
+    expect(r.level).toBe(3);
+  });
+  it('ohne Spielverlauf zählt nur der Endabstand', () => {
+    expect(rate(game('NBA', ['A', 130], ['B', 100])).level).toBe(1);
+    expect(rate(game('NBA', ['A', 101], ['B', 100])).hot).toBe(true);
+  });
+  it('Punktzahl ist ligaübergreifend vergleichbar: Stufe 5 ab 75', () => {
+    for (const name of Object.keys(spiele) as (keyof typeof spiele)[]) {
+      const r = rate(real(name));
+      expect(r.level === 5, name).toBe(r.score >= 75);
+    }
   });
 });
 
 describe('spoilerfreie Gründe', () => {
   it('nennen weder Sieger noch Richtung', () => {
-    const kinds = ['walkoff', 'extra', 'ot', 'comeback', 'leadchanges', 'lateclose', 'close', null] as const;
-    for (const k of kinds) {
-      const text = reason({ drama: k, hot: true, rivalry: false, playoff: false });
+    for (const dramatic of [true, false]) {
+      const text = reason({ dramatic, hot: true, rivalry: false, playoff: false });
       expect(text).not.toMatch(/walk-off|sieg|gewinn|verlier|heim|auswärts/i);
     }
     // Kein Label verrät Comeback oder Verlängerung
     expect(Object.values(LABELS).flat().join(' ')).not.toMatch(/comeback|overtime|verlängerung|extra|walk-off/i);
   });
-  it('Comeback, Extra Innings, Overtime und Führungswechsel teilen sich dieselben Labels', () => {
-    for (const k of ['walkoff', 'extra', 'ot', 'comeback', 'leadchanges', 'lateclose'] as const) {
-      for (const seed of ['1', '2', '3', '4', '5', '6']) expect(LABELS.drama).toContain(reason({ drama: k, hot: true, rivalry: false, playoff: false }, seed));
-    }
-  });
-  it('mehrere Punkte: Label aus allen passenden Töpfen, für dieselbe ID immer gleich', () => {
-    const r = { drama: 'comeback' as const, hot: true, rivalry: true, playoff: false };
-    const seen = new Set(Array.from({ length: 60 }, (_, i) => reason(r, String(i))));
+  it('ab 4 Balken aus dem Drama-Topf, für dieselbe ID immer gleich', () => {
+    const r = rate(real('Dodgers 5:4 Blue Jays'));
+    expect([...LABELS.drama, ...LABELS.playoff, ...LABELS.strong]).toContain(r.reason);
+    const multi = { dramatic: true, hot: true, rivalry: true, playoff: false };
+    const seen = new Set(Array.from({ length: 60 }, (_, i) => reason(multi, String(i))));
     expect([...seen].some((x) => LABELS.rivalry.includes(x))).toBe(true);
     expect([...seen].some((x) => LABELS.drama.includes(x))).toBe(true);
-    expect(reason(r, '401')).toBe(reason(r, '401'));
+    expect(reason(multi, '401')).toBe(reason(multi, '401'));
   });
 });
 
@@ -115,6 +146,44 @@ describe('ESPN-Daten', () => {
   });
 });
 
+describe('MLB: Runner auf Base je Halbinning', () => {
+  // Nach jedem Play: Inning, Hälfte, Outs, Spielstand und besetzte Bases
+  const play = (number: number, type: string, outs: number, away: number, home: number, ...bases: string[]) => ({
+    period: { type, number }, outs, awayScore: away, homeScore: home,
+    participants: [{ type: 'pitcher' }, { type: 'batter' }, ...bases.map((b) => ({ type: b }))],
+  });
+  it('kleinster Rückstand abzüglich Runner des schlagenden Teams', () => {
+    expect(parseHalves([
+      play(7, 'Bottom', 0, 3, 1), play(7, 'Bottom', 1, 3, 1, 'onFirst'), play(7, 'Bottom', 2, 3, 1, 'onFirst', 'onSecond'),
+      play(8, 'Top', 0, 3, 1, 'onFirst'), // führendes Team zählt nicht
+      play(9, 'Bottom', 3, 3, 1, 'onFirst', 'onSecond', 'onThird'), // nach dem 3. Out zählt nicht
+    ])).toEqual({ '7B': 0 });
+  });
+  it('ohne Daten zu besetzten Bases: unbekannt', () => {
+    expect(parseHalves([{ period: { type: 'Top', number: 7 }, outs: 0, awayScore: 0, homeScore: 2 }])).toBeUndefined();
+  });
+  it('liest Runs pro Inning aus dem Scoreboard', () => {
+    const e = { id: '1', date: '2026-10-07T23:00Z', status: { type: { state: 'post' } }, competitions: [{ competitors: [
+      { homeAway: 'away', team: {}, linescores: [{ value: 0 }, { value: 2 }] }, { homeAway: 'home', team: {}, linescores: [{ value: 1 }] },
+    ] }] };
+    expect(parseEvent('MLB', e)?.lines).toEqual({ away: [0, 2], home: [1] });
+    expect(parseEvent('NBA', e)?.lines).toBeUndefined();
+  });
+});
+
+describe('Spieluhr', () => {
+  it('liest auch Sekunden ohne Minuten (letzte Minute)', () => {
+    const plays = parsePlays({ plays: [{ scoringPlay: true, awayScore: 2, homeScore: 0, period: { number: 4 }, clock: { displayValue: '45.2' } }] });
+    expect(plays[0].clock).toBe(45);
+  });
+});
+
+describe('Bestwerte', () => {
+  it('liest Bestwerte', () => {
+    expect(parseLeaders([{ leaders: [{ name: 'points', leaders: [{ value: 51 }] }] }])).toEqual([{ stat: 'points', value: 51 }]);
+  });
+});
+
 describe('Zeitfenster', () => {
   it('rechnet Berliner Mittag in UTC um (Sommerzeit)', () => {
     expect(berlinTime('2026-10-07', 12).toISOString()).toBe('2026-10-07T10:00:00.000Z');
@@ -126,7 +195,6 @@ describe('Zeitfenster', () => {
 describe('NFL-Rivalitäten', () => {
   it('erkennt Chiefs gegen Raiders unabhängig vom Heimteam', () => {
     expect(rate(game('NFL', ['Las Vegas Raiders', 20], ['Kansas City Chiefs', 27])).rivalry).toBe(true);
-    expect(rate(game('NFL', ['Las Vegas Raiders', 20], ['Kansas City Chiefs', 27])).hot).toBe(true);
   });
 });
 
@@ -167,44 +235,6 @@ describe('Teamliste', async () => {
   });
 });
 
-describe('verbesserte Bewertung', () => {
-  it('früher Rückstand und klarer Sieg ist kein Comeback', () => {
-    const r = rate(game('NBA', ['A', 120], ['B', 100], [p(0, 12, 1, 100), p(60, 50, 2, 0), p(120, 100, 4, 0)]));
-    expect(r.drama).not.toBe('comeback');
-    expect(r.hot).toBe(false);
-  });
-  it('später Rückstand zählt als Comeback, auch bei klarem Ende', () => {
-    const r = rate(game('NBA', ['A', 115], ['B', 100], [p(70, 84, 3, 300), p(115, 100, 4, 0)]));
-    expect(r.drama).toBe('comeback');
-  });
-  it('Garbage Time: 15 vorne 3 Minuten vor Schluss, am Ende nur 6, ist nicht eng', () => {
-    const g = game('NBA', ['A', 104], ['B', 98], [p(100, 85, 4, 200), p(102, 92, 4, 120), p(104, 98, 4, 10)]);
-    expect(isGarbageTime(g)).toBe(true);
-    expect(rate(g).hot).toBe(false);
-  });
-  it('No-Hitter und 50-Punkte-Spiel sind historisch, auch bei klarem Ergebnis', () => {
-    const nh = game('MLB', ['A', 0], ['B', 6]);
-    nh.away.hits = 0;
-    expect(LABELS.historic).toContain(rate(nh).reason);
-    expect(rate(game('NBA', ['A', 130], ['B', 100], [], { leaders: [{ stat: 'points', value: 52 }] })).level).toBeGreaterThanOrEqual(4);
-  });
-  it('Preseason bekommt höchstens 3 Balken, auch bei Overtime', () => {
-    const r = rate(game('NBA', ['A', 120], ['B', 118], [p(108, 108, 4, 0), p(120, 118, 5, 0)], { season: 'preseason' }));
-    expect(r.level).toBe(3);
-    expect(r.hot).toBe(true);
-  });
-  it('Duell zweier starker Teams gibt einen Bonus', () => {
-    const base = game('NBA', ['A', 110], ['B', 101]);
-    const strong = game('NBA', ['A', 110], ['B', 101]);
-    strong.away.record = '40-10';
-    strong.home.record = '38-12';
-    expect(rate(strong).score).toBeGreaterThan(rate(base).score);
-  });
-  it('liest Bestwerte', () => {
-    expect(parseLeaders([{ leaders: [{ name: 'points', leaders: [{ value: 51 }] }] }])).toEqual([{ stat: 'points', value: 51 }]);
-  });
-});
-
 describe('gespeicherte Nächte', () => {
   it('werden mit den aktuellen Regeln neu bewertet (Preseason höchstens 3 Balken)', async () => {
     const { loadNight } = await import('./nights');
@@ -212,7 +242,7 @@ describe('gespeicherte Nächte', () => {
       id: '9', league: 'NBA', start: '2026-10-06T23:30:00Z', state: 'post', season: 'preseason',
       away: { name: 'A', short: 'A', abbr: 'A', color: '#000', score: 120 }, home: { name: 'B', short: 'B', abbr: 'B', color: '#000', score: 118 }, plays: [],
     };
-    const store = new Map([['night:v6:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
+    const store = new Map([['night:v7:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
     (globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: () => {} };
     const night = await loadNight('2026-10-07');
     expect(night.games[0].rating.level).toBeLessThanOrEqual(3);
@@ -235,79 +265,3 @@ describe('laufende Spiele', () => {
   });
 });
 
-describe('Rivalität, MLB-Verlauf und historische MLB-Leistungen', () => {
-  it('Rivalität gibt einen Balken mehr, außer bei einer Klatsche', () => {
-    expect(rate(game('MLB', ['New York Yankees', 6], ['Boston Red Sox', 2], [p(6, 2, 3)])).level).toBe(3);
-    expect(rate(game('MLB', ['A', 6], ['B', 2], [p(6, 2, 3)])).level).toBe(2);
-    expect(rate(game('NBA', ['Los Angeles Lakers', 111], ['Boston Celtics', 100], [p(60, 50, 2, 100), p(111, 100, 4, 10)])).level).toBe(3);
-    expect(rate(game('NBA', ['A', 111], ['B', 100], [p(60, 50, 2, 100), p(111, 100, 4, 10)])).level).toBe(2);
-    expect(rate(game('MLB', ['New York Yankees', 8], ['Boston Red Sox', 2], [p(8, 2, 3)])).level).toBe(2);
-    expect(rate(game('MLB', ['A', 8], ['B', 2], [p(8, 2, 3)])).level).toBe(1);
-    expect(rate(game('MLB', ['New York Yankees', 9], ['Boston Red Sox', 2], [p(9, 2, 3)])).level).toBe(1);
-    expect(rate(game('NBA', ['Los Angeles Lakers', 118], ['Boston Celtics', 100], [p(60, 50, 2, 100), p(118, 100, 4, 10)])).level).toBe(2);
-    expect(rate(game('NBA', ['Los Angeles Lakers', 125], ['Boston Celtics', 100], [p(70, 50, 2, 100), p(125, 100, 4, 10)])).level).toBe(1);
-  });
-  it('Rivalität in der Preseason bleibt bei höchstens 3 Balken', () => {
-    expect(rate(game('NBA', ['Los Angeles Lakers', 104], ['Boston Celtics', 100], [p(100, 98, 4, 120), p(104, 100, 4, 5)], { season: 'preseason' })).level).toBeLessThanOrEqual(3);
-  });
-  it('MLB: 2 Runs Abstand ohne knappen Stand ab dem 7. Inning sind 2 Balken', () => {
-    expect(rate(game('MLB', ['A', 2], ['B', 0], [p(1, 0, 2), p(2, 0, 2)])).level).toBe(2);
-  });
-  it('MLB: 2 Runs Abstand mit Gleichstand im 7. Inning bleiben 3 Balken', () => {
-    expect(rate(game('MLB', ['A', 4], ['B', 2], [p(2, 2, 5), p(4, 2, 7)])).level).toBe(3);
-  });
-  it('MLB: ohne Spielverlauf zählt weiter nur der Abstand', () => {
-    expect(rate(game('MLB', ['A', 2], ['B', 0])).level).toBe(3);
-  });
-  it('MLB historisch: 14 Strikeouts, 3 Home Runs, 7 RBI oder 5 Hits', () => {
-    const blowout = (feats: Game['feats']) => rate(game('MLB', ['A', 9], ['B', 1], [p(5, 0, 2), p(9, 1, 6)], { feats }));
-    expect(blowout([{ stat: 'strikeouts', value: 13 }, { stat: 'homeRuns', value: 2 }]).historic).toBe(false);
-    for (const f of [{ stat: 'strikeouts', value: 14 }, { stat: 'homeRuns', value: 3 }, { stat: 'rbis', value: 7 }, { stat: 'hits', value: 5 }]) {
-      const r = blowout([f]);
-      expect(r.historic).toBe(true);
-      expect(r.level).toBe(4);
-    }
-  });
-});
-
-describe('MLB: heiße Phase ohne Run', () => {
-  // Nach jedem Play: Inning, Hälfte, Outs, Spielstand und besetzte Bases
-  const play = (number: number, type: string, outs: number, away: number, home: number, ...bases: string[]) => ({
-    period: { type, number }, outs, awayScore: away, homeScore: home,
-    participants: [{ type: 'pitcher' }, { type: 'batter' }, ...bases.map((b) => ({ type: b }))],
-  });
-  it('Bases geladen im 7. bei 2 Runs Rückstand zählt', () => {
-    expect(parsePressure([play(3, 'Bottom', 0, 1, 0, 'onFirst'), play(7, 'Bottom', 2, 3, 1, 'onFirst', 'onSecond', 'onThird')])).toBe(true);
-  });
-  it('Bei 2 Runs Rückstand reichen 2 Runner, einer nicht', () => {
-    expect(parsePressure([play(8, 'Top', 1, 1, 3, 'onFirst', 'onSecond')])).toBe(true);
-    expect(parsePressure([play(8, 'Top', 1, 1, 3, 'onSecond'), play(9, 'Top', 2, 1, 3, 'onThird')])).toBe(false);
-  });
-  it('Leere Bases bei 2 Runs Rückstand, Runner vor dem 7. oder beim führenden Team zählen nicht', () => {
-    expect(parsePressure([play(7, 'Bottom', 0, 3, 1), play(6, 'Bottom', 0, 3, 1, 'onFirst', 'onSecond'), play(8, 'Top', 0, 3, 1, 'onFirst'), play(9, 'Bottom', 3, 3, 1, 'onFirst')])).toBe(false);
-  });
-  it('Ohne Daten zu besetzten Bases: unbekannt', () => {
-    expect(parsePressure([{ period: { type: 'Top', number: 7 }, outs: 0, awayScore: 0, homeScore: 2 }])).toBeUndefined();
-  });
-  it('2 Runs Abstand mit heißer Phase bleiben 3 Balken', () => {
-    const plays = [p(1, 0, 3), p(1, 1, 3), p(2, 1, 5), p(3, 1, 6)];
-    expect(rate(game('MLB', ['A', 3], ['B', 1], plays)).level).toBe(2);
-    expect(rate(game('MLB', ['A', 3], ['B', 1], plays, { pressure: true })).level).toBe(3);
-  });
-});
-
-describe('MLB: später Führungswechsel erst ab dem 8. Inning', () => {
-  it('Führungswechsel im 7. zu 3 Runs Abstand ist kein Drama', () => {
-    const plays = [p(0, 1, 1), p(1, 1, 2), p(3, 1, 7), p(4, 1, 9)];
-    const regular = rate(game('MLB', ['A', 4], ['B', 1], plays));
-    expect(regular.drama).toBeNull();
-    expect(regular.level).toBe(2);
-    expect(rate(game('MLB', ['A', 4], ['B', 1], plays, { season: 'playoff' })).level).toBe(3);
-  });
-  it('Führungswechsel im 8. bleibt Drama', () => {
-    expect(rate(game('MLB', ['A', 4], ['B', 1], [p(0, 1, 1), p(3, 1, 8), p(4, 1, 9)])).drama).toBe('leadchanges');
-  });
-  it('Führungswechsel im 7. zu 3:1 ohne weitere Runs: 2-Runs-Regel greift, 3 Balken', () => {
-    expect(rate(game('MLB', ['A', 3], ['B', 1], [p(0, 1, 2), p(3, 1, 7)])).level).toBe(3);
-  });
-});

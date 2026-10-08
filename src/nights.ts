@@ -1,6 +1,6 @@
 // Zeitfenster („letzte Nacht“, „heute Abend“) und Priorisierung.
 import { withFeats } from './boxscore';
-import { scoreboards, withPlays, withPressure } from './espn';
+import { scoreboards, withHalves, withPlays } from './espn';
 import { favoriteOf } from './favorites';
 import type { Favorite } from './favorites';
 import { bothStrong, isRivalry, rate } from './rating';
@@ -45,7 +45,7 @@ export interface Night {
   failed: string[];
 }
 
-const cacheKey = (date: string) => `night:v6:${date}`;
+const cacheKey = (date: string) => `night:v7:${date}`;
 
 /**
  * Beendete Spiele der Nacht vor `date`: Start zwischen Vortag 12:00 und `date` 12:00 Berliner Zeit.
@@ -68,7 +68,7 @@ export async function loadNight(date: string, now = new Date()): Promise<Night> 
     const t = new Date(g.start).getTime();
     return t >= from && t < to;
   });
-  const finished = await Promise.all(inWindow.filter((g) => g.state === 'post').map((g) => withPlays(g).then(withFeats).then(withPressure)));
+  const finished = await Promise.all(inWindow.filter((g) => g.state === 'post').map((g) => withPlays(g).then(withFeats).then(withHalves)));
   const night: Night = {
     date,
     games: finished.map((game) => ({ game, rating: rate(game) })),
