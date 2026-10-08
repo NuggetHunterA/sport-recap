@@ -216,7 +216,7 @@ function ruleScore(game: Game, d: DramaKind | null, margin: number, t: Trace): n
   const limit = game.season === 'preseason' ? m.preseason : m.normal;
   if (d && BIG.includes(d)) return 85;
   if (d === 'leadchanges' || d === 'lateclose') return 65;
-  // MLB: 2 Runs Abstand ist nur eng, wenn es ab dem 7. Inning noch knapp war oder der Ausgleich auf Base bzw. am Schlag stand (ohne Spielverlauf wie bisher)
+  // MLB: 2 Runs Abstand ist nur eng, wenn es ab dem 7. Inning noch knapp war oder der Ausgleich auf Base stand (ohne Spielverlauf wie bisher)
   if (game.league === 'MLB' && !d && margin === 2 && game.plays?.length && !t.lateTight && !game.pressure) return 30;
   if (d || margin <= limit) return 50;
   return margin <= limit * 2 ? 30 : 10;

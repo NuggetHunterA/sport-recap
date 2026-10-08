@@ -212,7 +212,7 @@ describe('gespeicherte Nächte', () => {
       id: '9', league: 'NBA', start: '2026-10-06T23:30:00Z', state: 'post', season: 'preseason',
       away: { name: 'A', short: 'A', abbr: 'A', color: '#000', score: 120 }, home: { name: 'B', short: 'B', abbr: 'B', color: '#000', score: 118 }, plays: [],
     };
-    const store = new Map([['night:v5:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
+    const store = new Map([['night:v6:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
     (globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: () => {} };
     const night = await loadNight('2026-10-07');
     expect(night.games[0].rating.level).toBeLessThanOrEqual(3);
@@ -279,8 +279,9 @@ describe('MLB: heiße Phase ohne Run', () => {
   it('Bases geladen im 7. bei 2 Runs Rückstand zählt', () => {
     expect(parsePressure([play(3, 'Bottom', 0, 1, 0, 'onFirst'), play(7, 'Bottom', 2, 3, 1, 'onFirst', 'onSecond', 'onThird')])).toBe(true);
   });
-  it('Ein Runner bei 2 Runs Rückstand reicht: der Batter ist der Ausgleich', () => {
-    expect(parsePressure([play(8, 'Top', 1, 1, 3, 'onSecond')])).toBe(true);
+  it('Bei 2 Runs Rückstand reichen 2 Runner, einer nicht', () => {
+    expect(parsePressure([play(8, 'Top', 1, 1, 3, 'onFirst', 'onSecond')])).toBe(true);
+    expect(parsePressure([play(8, 'Top', 1, 1, 3, 'onSecond'), play(9, 'Top', 2, 1, 3, 'onThird')])).toBe(false);
   });
   it('Leere Bases bei 2 Runs Rückstand, Runner vor dem 7. oder beim führenden Team zählen nicht', () => {
     expect(parsePressure([play(7, 'Bottom', 0, 3, 1), play(6, 'Bottom', 0, 3, 1, 'onFirst', 'onSecond'), play(8, 'Top', 0, 3, 1, 'onFirst'), play(9, 'Bottom', 3, 3, 1, 'onFirst')])).toBe(false);

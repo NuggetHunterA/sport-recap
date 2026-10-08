@@ -125,7 +125,7 @@ export async function withPlays(game: Game): Promise<Game> {
 }
 
 /**
- * MLB: Hatte das zurückliegende Team ab dem 7. Inning den Ausgleich auf Base oder am Schlag?
+ * MLB: Hatte das zurückliegende Team ab dem 7. Inning den Ausgleich auf Base (bei 2 Runs Rückstand also mindestens 2 Runner)?
  * Nutzt die besetzten Bases (participants onFirst/onSecond/onThird) nach jedem Play; undefined, wenn die Daten fehlen.
  */
 export function parsePressure(plays: any[]): boolean | undefined {
@@ -138,7 +138,7 @@ export function parsePressure(plays: any[]): boolean | undefined {
     const home = parseInt(p.homeScore ?? 0, 10) || 0;
     const deficit = half === 'Top' ? home - away : away - home;
     const runners = new Set((p.participants ?? []).filter(isRunner).map((x: any) => x.type)).size;
-    return deficit > 0 && runners + 1 >= deficit;
+    return deficit > 0 && runners >= deficit;
   });
 }
 
