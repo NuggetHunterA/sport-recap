@@ -16,8 +16,6 @@ export const Icon = {
   clock: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
   star: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 6.9L12 17.6 5.7 21l1.5-6.9L2 9.3l7-.8z" /></svg>,
   starFilled: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 6.9L12 17.6 5.7 21l1.5-6.9L2 9.3l7-.8z" /></svg>,
-  thumbUp: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3zm0 0l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.1 21H7" /></svg>,
-  thumbDown: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3zm0 0l-4 8a3 3 0 0 1-3-3v-4H4.5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.9 3H17" /></svg>,
   left: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>,
   right: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>,
 };
@@ -43,24 +41,13 @@ export function Badge({ team, size, light }: { team: Pick<Team, 'color' | 'logo'
   );
 }
 
-function VoteButtons({ vote, onVote }: { vote?: 1 | -1; onVote: (v: 1 | -1) => void }) {
-  return (
-    <div class="vote" role="group" aria-label="Hat sich das Spiel gelohnt?">
-      <span>Gelohnt?</span>
-      <button type="button" aria-pressed={vote === 1} aria-label="Hat sich gelohnt" onClick={() => onVote(1)}>{Icon.thumbUp}</button>
-      <button type="button" aria-pressed={vote === -1} aria-label="War langweilig" onClick={() => onVote(-1)}>{Icon.thumbDown}</button>
-    </div>
-  );
-}
+type CardProps = { item: RatedGame; open: boolean; toggle: () => void; onBox?: () => void };
 
-type CardProps = { item: RatedGame; open: boolean; toggle: () => void; vote?: 1 | -1; onVote: (v: 1 | -1) => void; onBox?: () => void };
-
-/** Fußzeile einer aufgedeckten Karte: Boxscore und Daumen */
-function CardFoot({ vote, onVote, onBox }: Pick<CardProps, 'vote' | 'onVote' | 'onBox'>) {
+/** Fußzeile einer aufgedeckten Karte: Boxscore */
+function CardFoot({ onBox }: { onBox: () => void }) {
   return (
     <div class="card-foot">
-      {onBox && <button type="button" class="box-btn" onClick={onBox}>{Icon.table} Boxscore</button>}
-      <VoteButtons vote={vote} onVote={onVote} />
+      <button type="button" class="box-btn" onClick={onBox}>{Icon.table} Boxscore</button>
     </div>
   );
 }
@@ -91,7 +78,7 @@ function label(game: Game): string {
   return game.season === 'preseason' ? 'Preseason' : game.season === 'playoff' ? 'Playoffs' : 'Regular Season';
 }
 
-export function Hero({ item, open, toggle, vote, onVote, onBox }: CardProps) {
+export function Hero({ item, open, toggle, onBox }: CardProps) {
   const { game, rating } = item;
   // Trikotfarben: Hauptfarbe und Zweitfarbe je Team
   const colors = (t: Team) => ({ '--c': t.color, '--c2': t.alt ?? '#ffffff' });
@@ -121,7 +108,7 @@ export function Hero({ item, open, toggle, vote, onVote, onBox }: CardProps) {
             <div><div class="meter-label">Spannung</div><Meter level={rating.level} big /></div>
             <button type="button" class="glass" onClick={toggle}>{Icon.eye} {open ? 'Verbergen' : 'Aufdecken'}</button>
           </div>
-          {open && <CardFoot vote={vote} onVote={onVote} onBox={onBox} />}
+          {open && onBox && <CardFoot onBox={onBox} />}
         </div>
       </article>
     </section>
@@ -138,7 +125,7 @@ function Shell({ away, home, hot, children, onClick }: { away: string; home: str
   );
 }
 
-export function GameCard({ item, open, toggle, vote, onVote, onBox }: CardProps) {
+export function GameCard({ item, open, toggle, onBox }: CardProps) {
   const { game, rating } = item;
   return (
     <Shell away={game.away.color} home={game.home.color} hot={rating.hot} onClick={open ? openBox(onBox) : undefined}>
@@ -157,7 +144,7 @@ export function GameCard({ item, open, toggle, vote, onVote, onBox }: CardProps)
           <Score game={game} open={open} />
         </button>
       </div>
-      {open && <CardFoot vote={vote} onVote={onVote} onBox={onBox} />}
+      {open && onBox && <CardFoot onBox={onBox} />}
     </Shell>
   );
 }
