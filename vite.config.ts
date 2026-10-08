@@ -16,8 +16,8 @@ export default defineConfig({
         short_name: 'Recap',
         description: 'Spoilerfreie Bewertung der Spiele von letzter Nacht',
         lang: 'de',
-        theme_color: '#07090d',
-        background_color: '#07090d',
+        theme_color: '#efe7da',
+        background_color: '#efe7da',
         display: 'standalone',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },

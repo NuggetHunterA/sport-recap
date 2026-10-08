@@ -6,8 +6,6 @@ import { TIER_TITLES, addDays, berlinToday, formatDay, formatTime, loadNight, lo
 import type { Night, Tier } from './nights';
 import { TeamsView } from './TeamsView';
 import { BoxSheet, canShowBox } from './BoxSheet';
-import { loadVotes, makeVote, saveVotes } from './votes';
-import type { Vote } from './votes';
 import type { RatedGame } from './nights';
 import type { Game } from './types';
 import type { League } from './types';
@@ -34,15 +32,6 @@ export function App() {
   const [filter, setFilter] = useState<Filter>('Alle');
   const [revealed, setRevealed] = useState(readRevealed);
   const [favorites, setFavorites] = useState(loadFavorites);
-  const [votes, setVotes] = useState(loadVotes);
-  const castVote = (item: RatedGame, v: 1 | -1) => {
-    const next = { ...votes };
-    // Nochmal tippen nimmt das Urteil zurück
-    if (next[item.game.id]?.vote === v) delete next[item.game.id];
-    else next[item.game.id] = makeVote(item, v);
-    setVotes(next);
-    saveVotes(next);
-  };
   const updateFavorites = (next: Favorite[]) => {
     setFavorites(next);
     saveFavorites(next);
@@ -58,9 +47,9 @@ export function App() {
   return (
     <div class="app">
       <div class="glow" aria-hidden="true" />
-      {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} votes={votes} castVote={castVote} />}
+      {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} />}
       {tab === 'tonight' && <TonightView filter={filter} setFilter={setFilter} favorites={favorites} />}
-      {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} votes={votes} />}
+      {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} />}
       <nav class="nav" aria-label="Hauptmenü">
         <button type="button" aria-current={tab === 'night' ? 'page' : undefined} onClick={() => setTab('night')}>{Icon.moon} Letzte Nacht</button>
         <button type="button" aria-current={tab === 'tonight' ? 'page' : undefined} onClick={() => setTab('tonight')}>{Icon.clock} Heute Abend</button>
@@ -98,15 +87,12 @@ function NightView(props: {
   date: string; today: string; setDate: (d: string) => void;
   filter: Filter; setFilter: (f: Filter) => void;
   revealed: Set<string>; toggle: (id: string) => () => void; favorites: Favorite[];
-  votes: Record<string, Vote>; castVote: (item: RatedGame, v: 1 | -1) => void;
 }) {
-  const { date, today, setDate, filter, setFilter, revealed, toggle, favorites, votes, castVote } = props;
+  const { date, today, setDate, filter, setFilter, revealed, toggle, favorites } = props;
   const card = (item: RatedGame) => ({
     item,
     open: revealed.has(item.game.id),
     toggle: toggle(item.game.id),
-    vote: votes[item.game.id]?.vote,
-    onVote: (v: 1 | -1) => castVote(item, v),
     onBox: canShowBox(item.game) ? () => setBox(item.game) : undefined,
   });
   const [box, setBox] = useState<Game | null>(null);
