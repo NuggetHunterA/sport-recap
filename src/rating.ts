@@ -247,29 +247,43 @@ export function rate(game: Game): Rating {
   const hot = level >= 3;
   return {
     drama: d, rivalry, strong, historic, score, hot, level,
-    reason: reason({ drama: d, hot, rivalry, playoff, historic, strong, score }),
+    reason: reason({ drama: d, hot, rivalry, playoff, historic, strong }, game.id),
     sortKey: (playoff ? 0 : 1000) + (100 - score),
   };
 }
 
-/** Spoilerfreie Begründung: verrät nie, wer geführt oder gewonnen hat. */
+/** Spoilerfreie Labels. Alles Dramatische teilt sich einen Topf, damit das Label nichts über den Verlauf verrät. */
+export const LABELS = {
+  drama: ['Krimi bis zum Schluss', 'Hin und her bis zuletzt', 'Spannende Schlussphase', 'Bis zum Ende offen',
+    'Nichts für schwache Nerven', 'Achterbahnfahrt', 'Nervenkitzel pur', 'Herzschlagfinale', 'Spannend bis zuletzt'],
+  rivalry: ['Rivalitätsduell', 'Erzrivalen unter sich', 'Prestigeduell'],
+  playoff: ['Playoff-Spiel', 'Playoff-Atmosphäre', 'Es geht um alles'],
+  strong: ['Topduell', 'Spitzenspiel', 'Duell der Großen'],
+  close: ['Enges Spiel', 'Lange offen'],
+  historic: ['Historischer Abend', 'Besondere Leistung'],
+  skip: ['Kannst du auslassen', 'Kein Muss', 'Nur für Fans'],
+};
+
+/** Gleiche Spiel-ID ergibt immer dasselbe Label (auch nach Neuladen und in der Benachrichtigung). */
+function pick(list: string[], seed: string): string {
+  let h = 0;
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return list[h % list.length];
+}
+
+/** Spoilerfreie Begründung: verrät nie, wer geführt oder gewonnen hat. Treffen mehrere Punkte zu, wird aus allen gewählt. */
 export function reason(r: {
   drama: DramaKind | null; hot: boolean; rivalry: boolean; playoff: boolean;
-  historic?: boolean; strong?: boolean; score?: number;
-}): string {
-  if (!r.hot) return 'Kannst du auslassen';
-  if (r.historic) return 'Historischer Abend';
-  switch (r.drama) {
-    case 'walkoff': return 'Krimi bis zum Schluss';
-    case 'extra': return 'Extra Innings';
-    case 'ot': return 'Overtime';
-    case 'comeback': return 'Comeback';
-  }
-  if (r.rivalry) return 'Rivalitätsduell';
-  if (r.drama === 'leadchanges') return 'Hin und her bis zuletzt';
-  if (r.drama === 'lateclose') return 'Spannende Schlussphase';
-  if ((r.score ?? 0) >= 58) return 'Spannend bis zuletzt';
-  if (r.playoff) return 'Playoff-Spiel';
-  if (r.strong) return 'Topduell';
-  return 'Enges Spiel';
+  historic?: boolean; strong?: boolean;
+}, seed = ''): string {
+  if (!r.hot) return pick(LABELS.skip, seed);
+  const dramatic = r.drama !== null && r.drama !== 'close';
+  const pool = [
+    ...(r.historic ? LABELS.historic : []),
+    ...(dramatic ? LABELS.drama : []),
+    ...(r.rivalry ? LABELS.rivalry : []),
+    ...(r.playoff ? LABELS.playoff : []),
+    ...(r.strong ? LABELS.strong : []),
+  ];
+  return pick(pool.length ? pool : LABELS.close, seed);
 }
