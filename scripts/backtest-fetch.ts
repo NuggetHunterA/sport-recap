@@ -4,6 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { mlbFeats } from '../src/boxscore';
 import { parseEvent, parsePlays, parsePressure } from '../src/espn';
+import { TEAMS } from '../src/teams';
 import type { Game, League } from '../src/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -83,7 +84,8 @@ console.error(`${events.length} Spiele`);
 
 const games = await pool(events, 8, async ({ l, d, e }: any) => {
   const game = parseEvent(l, e) as Game & Record<string, any>;
-  if (!game) return null;
+  // Nur echte Teams, keine All-Star-Spiele oder Pro Bowl
+  if (!game || ![game.away.name, game.home.name].every((n) => TEAMS.some((t) => t.league === l && t.name === n))) return null;
   game.date = d;
   const cs: any[] = e.competitions?.[0]?.competitors ?? [];
   const lines = (side: string) => (cs.find((c) => c.homeAway === side)?.linescores ?? []).map((x: any) => Number(x.value) || 0);

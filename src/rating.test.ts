@@ -311,3 +311,10 @@ describe('MLB: später Führungswechsel erst ab dem 8. Inning', () => {
     expect(rate(game('MLB', ['A', 3], ['B', 1], [p(0, 1, 2), p(3, 1, 7)])).level).toBe(3);
   });
 });
+
+describe('Spieluhr', () => {
+  it('liest auch Sekunden ohne Minuten (letzte Minute)', () => {
+    const plays = parsePlays({ plays: [{ scoringPlay: true, awayScore: 2, homeScore: 0, period: { number: 4 }, clock: { displayValue: '45.2' } }] });
+    expect(plays[0].clock).toBe(45);
+  });
+});

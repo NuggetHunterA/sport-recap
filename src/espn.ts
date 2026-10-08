@@ -81,8 +81,12 @@ export function parseLeaders(sources: any[]): Leader[] {
 
 function clockSeconds(clock: any): number | undefined {
   if (typeof clock?.value === 'number') return clock.value;
-  const m = /^(\d+):(\d+)/.exec(clock?.displayValue ?? '');
-  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : undefined;
+  const text = clock?.displayValue ?? '';
+  const m = /^(\d+):(\d+)/.exec(text);
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  // In der letzten Minute nur Sekunden, z. B. "45.2"
+  const s = /^(\d+(?:\.\d+)?)$/.exec(text);
+  return s ? Math.floor(parseFloat(s[1])) : undefined;
 }
 
 /** Scoring-Plays aus der Spielzusammenfassung (MLB/NBA: plays, NFL: scoringPlays). */
