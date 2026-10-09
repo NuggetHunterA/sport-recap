@@ -169,10 +169,11 @@ body.locked { overflow: hidden; }
 .sheet-head { display: flex; align-items: center; gap: 10px; }
 .sheet-head h2 { margin: 0; flex: 1; font: 700 24px/1 var(--display); text-transform: uppercase; letter-spacing: .02em; }
 .sheet-close { min-width: 40px; min-height: 40px; border-radius: 12px; border: 1px solid var(--line); background: rgba(70,45,25,.05); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
-.sheet-score { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 16px; background: rgba(70,45,25,.04); border: 1px solid var(--line); }
-.sheet-side { display: flex; align-items: center; gap: 10px; font: 700 18px var(--display); text-transform: uppercase; }
-.sheet-side.home { flex-direction: row-reverse; }
-.sheet-score b { font: 800 32px/1 var(--display); letter-spacing: .02em; }
+.sheet-score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 8px; padding: 12px 14px; border-radius: 16px; background: rgba(70,45,25,.04); border: 1px solid var(--line); }
+.sheet-side { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; font: 700 16px/1.1 var(--display); text-transform: uppercase; text-align: center; }
+.sheet-side .badge { flex-shrink: 0; }
+.sheet-side span:last-child { max-width: 100%; overflow-wrap: anywhere; }
+.sheet-score b { font: 800 32px/1 var(--display); letter-spacing: .02em; white-space: nowrap; align-self: center; }
 .seg { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(70,45,25,.05); border: 1px solid var(--line); }
 .seg button { flex: 1; min-height: 38px; border: none; border-radius: 999px; background: transparent; color: var(--muted); font: 600 14px var(--body); }
 .seg button[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
