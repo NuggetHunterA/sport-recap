@@ -1,0 +1,304 @@
+[
+ {
+  "game": {
+   "id": "401908030",
+   "league": "MLB",
+   "start": "2026-10-12T00:00Z",
+   "state": "post",
+   "period": 9,
+   "season": "playoff",
+   "note": "NLCS - Game 1",
+   "away": {
+    "name": "Los Angeles Dodgers",
+    "short": "Dodgers",
+    "abbr": "LAD",
+    "color": "#005a9c",
+    "alt": "#ffffff",
+    "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/lad.png",
+    "record": "100-62",
+    "score": 1,
+    "hits": 7
+   },
+   "home": {
+    "name": "Milwaukee Brewers",
+    "short": "Brewers",
+    "abbr": "MIL",
+    "color": "#13294b",
+    "alt": "#ffc72c",
+    "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/mil.png",
+    "record": "103-59",
+    "score": 2,
+    "hits": 6
+   },
+   "leaders": [
+    {
+     "stat": "MLBRating",
+     "value": 66.25,
+     "name": "B. Turang"
+    },
+    {
+     "stat": "avg",
+     "value": 0.5,
+     "name": "T. Hernandez"
+    },
+    {
+     "stat": "homeRuns",
+     "value": 0,
+     "name": "F. Freeman"
+    },
+    {
+     "stat": "RBIs",
+     "value": 1,
+     "name": "A. Pages"
+    },
+    {
+     "stat": "MLBRating",
+     "value": 62.25,
+     "name": "T. Hernandez"
+    },
+    {
+     "stat": "MLBRating",
+     "value": 62.25,
+     "name": "T. Hernandez"
+    },
+    {
+     "stat": "avg",
+     "value": 0.5,
+     "name": "B. Turang"
+    },
+    {
+     "stat": "homeRuns",
+     "value": 1,
+     "name": "B. Turang"
+    },
+    {
+     "stat": "RBIs",
+     "value": 1,
+     "name": "B. Turang"
+    },
+    {
+     "stat": "MLBRating",
+     "value": 66.25,
+     "name": "B. Turang"
+    },
+    {
+     "stat": "MLBRating",
+     "value": 66.25,
+     "name": "B. Turang"
+    }
+   ],
+   "lines": {
+    "away": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "home": [
+     0,
+     0,
+     0,
+     1,
+     1,
+     0,
+     0,
+     0
+    ]
+   },
+   "plays": [
+    {
+     "away": 1,
+     "home": 0,
+     "period": 2,
+     "text": "Pages singled to right, Ohtani scored, T. Hernández to second."
+    },
+    {
+     "away": 1,
+     "home": 1,
+     "period": 4,
+     "text": "Turang homered to left center (384 feet)."
+    },
+    {
+     "away": 1,
+     "home": 2,
+     "period": 5,
+     "text": "Lara singled to center, Mitchell scored."
+    }
+   ],
+   "feats": [
+    {
+     "stat": "strikeouts",
+     "value": 7,
+     "name": "T. Skubal"
+    },
+    {
+     "stat": "homeRuns",
+     "value": 1,
+     "name": "B. Turang"
+    },
+    {
+     "stat": "rbis",
+     "value": 1,
+     "name": "A. Pages"
+    },
+    {
+     "stat": "hits",
+     "value": 2,
+     "name": "T. Hernández"
+    }
+   ],
+   "halves": {
+    "2B": 0,
+    "3B": 1,
+    "4B": 1,
+    "6T": 0,
+    "7T": 1,
+    "8T": 0,
+    "9T": 0
+   }
+  },
+  "curve": {
+   "final": 0.9150875493832988,
+   "course": 0.9022440156952302,
+   "turns": 0.2222222222222222,
+   "comeback": 0,
+   "score": 77.26614238446629
+  },
+  "rating": {
+   "rivalry": false,
+   "strong": true,
+   "historic": false,
+   "score": 61,
+   "hot": true,
+   "level": 4,
+   "reason": "Spitzenspiel",
+   "sortKey": 39
+  },
+  "states": [
+   {
+    "t": 0,
+    "r": 1,
+    "margin": 0,
+    "effective": 0,
+    "open": 1
+   },
+   {
+    "t": 0.05555555555555555,
+    "r": 0.9444444444444444,
+    "margin": 0,
+    "effective": 0,
+    "open": 1
+   },
+   {
+    "t": 0.1111111111111111,
+    "r": 0.8888888888888888,
+    "margin": 0,
+    "effective": 0,
+    "open": 1
+   },
+   {
+    "t": 0.16666666666666666,
+    "r": 0.8333333333333334,
+    "margin": 1,
+    "effective": 0,
+    "open": 1
+   },
+   {
+    "t": 0.2222222222222222,
+    "r": 0.7777777777777778,
+    "margin": 1,
+    "effective": 1,
+    "open": 0.8491296264014134
+   },
+   {
+    "t": 0.2777777777777778,
+    "r": 0.7222222222222222,
+    "margin": 1,
+    "effective": 1,
+    "open": 0.8448266265443496
+   },
+   {
+    "t": 0.3333333333333333,
+    "r": 0.6666666666666666,
+    "margin": 1,
+    "effective": 1,
+    "open": 0.8400885062311074
+   },
+   {
+    "t": 0.3888888888888889,
+    "r": 0.6111111111111112,
+    "margin": 1,
+    "effective": 1,
+    "open": 0.8348326148853871
+   },
+   {
+    "t": 0.4444444444444444,
+    "r": 0.5555555555555556,
+    "margin": 0,
+    "effective": 0,
+    "open": 1
+   },
+   {
+    "t": 0.5,
+    "r": 0.5,
+    "margin": 0,
+    "effective": 0,
+    "open": 1
+   },
+   {
+    "t": 0.5555555555555556,
+    "r": 0.4444444444444444,
+    "margin": -1,
+    "effective": 0,
+    "open": 1
+   },
+   {
+    "t": 0.6111111111111112,
+    "r": 0.3888888888888889,
+    "margin": -1,
+    "effective": 1,
+    "open": 0.8058491241991674
+   },
+   {
+    "t": 0.6666666666666666,
+    "r": 0.3333333333333333,
+    "margin": -1,
+    "effective": 1,
+    "open": 0.7953662512608992
+   },
+   {
+    "t": 0.7222222222222222,
+    "r": 0.2777777777777778,
+    "margin": -1,
+    "effective": 1,
+    "open": 0.7826198124268027
+   },
+   {
+    "t": 0.7777777777777778,
+    "r": 0.2222222222222222,
+    "margin": -1,
+    "effective": 0,
+    "open": 1
+   },
+   {
+    "t": 0.8333333333333334,
+    "r": 0.16666666666666666,
+    "margin": -1,
+    "effective": 1,
+    "open": 0.7452626481498967
+   },
+   {
+    "t": 0.8888888888888888,
+    "r": 0.1111111111111111,
+    "margin": -1,
+    "effective": 0,
+    "open": 1
+   }
+  ]
+ }
+]
