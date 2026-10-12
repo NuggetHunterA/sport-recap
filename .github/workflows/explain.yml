@@ -1,0 +1,31 @@
+name: Explain
+
+# Nur auf dem Branch "explain": holt ein Spiel und legt die Bewertung im Branch ab.
+on:
+  push:
+    branches: [explain]
+    paths: [scripts/explain.ts, .github/workflows/explain.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  explain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vite-node scripts/explain.ts
+        env:
+          DATES: 2026-10-10,2026-10-11
+          TEAMS: Dodgers,Brewers
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add explain
+          git commit -m "Explain-Daten"
+          git push
