@@ -123,10 +123,3 @@ export async function loadStandings(league: League): Promise<LeagueStandings> {
   const data = await getJson(`${URL}/${PATHS[league]}/standings${level}`, 30 * 60 * 1000);
   return parseStandings(league, data);
 }
-
-/** Liga, deren Saison gerade läuft: Herbst und Winter NFL, Frühjahr NBA, Sommer MLB */
-export function currentLeague(month: number): League {
-  if (month >= 9 || month === 1) return 'NFL';
-  if (month <= 3) return 'NBA';
-  return 'MLB';
-}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currentLeague, parseEntry, parseStandings } from './standings';
+import { parseEntry, parseStandings } from './standings';
 
 /** ESPN-Eintrag wie in /standings: Team plus Statistikliste */
 function entry(abbr: string, wins: number, losses: number, extra: { ties?: number; gb?: number; seed?: number; clinch?: string } = {}) {
@@ -78,12 +78,5 @@ describe('Tabellen', () => {
   it('übernimmt nur bekannte Markierungen und die Teamfarbe', () => {
     expect(parseEntry('MLB', entry('SD', 90, 72, { clinch: 'x' }))).toMatchObject({ clinch: 'x', color: '#2F241D' });
     expect(parseEntry('MLB', entry('SD', 90, 72, { clinch: '*' })).clinch).toBeUndefined();
-  });
-
-  it('wählt die Liga der laufenden Saison', () => {
-    expect(currentLeague(10)).toBe('NFL');
-    expect(currentLeague(1)).toBe('NFL');
-    expect(currentLeague(3)).toBe('NBA');
-    expect(currentLeague(7)).toBe('MLB');
   });
 });

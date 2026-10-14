@@ -3,7 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { Icon, Skeletons } from './components';
 import { matches } from './favorites';
 import type { Favorite } from './favorites';
-import { currentLeague, loadStandings } from './standings';
+import { loadStandings } from './standings';
 import type { LeagueStandings, Standing, Table } from './standings';
 import type { League } from './types';
 import { LEAGUES } from './types';
@@ -17,7 +17,7 @@ const LEGEND: Record<string, string> = {
 };
 
 export function StandingsView({ favorites }: { favorites: Favorite[] }) {
-  const [league, setLeague] = useState<League>(() => currentLeague(new Date().getMonth() + 1));
+  const [league, setLeague] = useState<League>('MLB');
   // Bei jedem Öffnen des Tabs wieder verdeckt: der Zustand lebt nur, solange der Tab offen ist
   const [revealed, setRevealed] = useState<Set<League>>(new Set());
   const [state, setState] = useState<{ data?: LeagueStandings; error?: string; loading: boolean }>({ loading: true });
