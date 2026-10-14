@@ -13,8 +13,59 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,800&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <title>Sport Recap</title>
+  <style>
+    /* Startbildschirm: Anzeigetafel „? : ?“, 1,6 s Animation + 0,4 s Ausblenden; Tippen überspringt */
+    #splash { --u: min(1vw, 4.2px); position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--u) * 6); background: radial-gradient(120% 70% at 50% 0%, #16224a 0%, #0d1630 45%, #07090d 100%); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: opacity .4s ease-in; }
+    #splash.out { opacity: 0; pointer-events: none; }
+    #splash.skip { opacity: 0; pointer-events: none; transition-duration: .2s; }
+    #splash .sb { width: calc(var(--u) * 74); border-radius: calc(var(--u) * 4); background: #10151f; border: calc(var(--u) * 1.4) solid #232a38; padding: calc(var(--u) * 4) calc(var(--u) * 4) calc(var(--u) * 3); display: flex; flex-direction: column; gap: calc(var(--u) * 2.5); }
+    #splash .top { display: flex; justify-content: space-between; font: 700 calc(var(--u) * 4.6)/1 'Barlow Condensed', system-ui, sans-serif; letter-spacing: .14em; color: #ffd27a; }
+    #splash .mid { display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 3); }
+    #splash .win { width: calc(var(--u) * 22); height: calc(var(--u) * 26); border-radius: calc(var(--u) * 2); background: #05070b; overflow: hidden; }
+    #splash .strip { display: flex; flex-direction: column; animation: splash-roll 1s cubic-bezier(.25,.1,.2,1) both; }
+    #splash .w2 .strip { animation-duration: 1.2s; }
+    #splash .strip b { height: calc(var(--u) * 26); flex: none; display: grid; place-items: center; font: 800 calc(var(--u) * 22)/1 'Barlow Condensed', system-ui, sans-serif; color: #f5821f; text-shadow: 0 0 calc(var(--u) * 3) rgba(245,130,31,.55); }
+    #splash .colon { font: 800 calc(var(--u) * 16)/1 'Barlow Condensed', system-ui, sans-serif; color: #f5821f; opacity: .8; }
+    #splash .dots { display: flex; justify-content: center; gap: calc(var(--u) * 2); }
+    #splash .dots i { width: calc(var(--u) * 2); height: calc(var(--u) * 2); border-radius: 50%; background: #3a2a14; animation: splash-bulb .6s steps(1) both; }
+    #splash .wm { font: 800 calc(var(--u) * 11)/1 'Bricolage Grotesque', system-ui, sans-serif; color: #eef1f6; letter-spacing: -.01em; animation: splash-wm .45s ease-out .9s both; }
+    #splash .wm span { color: #f5821f; }
+    #splash .tap { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 24px); text-align: center; font: 500 12px/1 'IBM Plex Sans', system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: rgba(238,241,246,.35); animation: splash-fade .3s ease-out .3s both; }
+    @keyframes splash-roll { from { transform: translateY(0) } to { transform: translateY(calc(var(--u) * -26 * 13)) } }
+    @keyframes splash-bulb { from { background: #3a2a14 } to { background: #ffd27a; box-shadow: 0 0 calc(var(--u) * 2) #ffd27a } }
+    @keyframes splash-wm { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+    @keyframes splash-fade { from { opacity: 0 } to { opacity: 1 } }
+  </style>
 </head>
 <body>
+  <div id="splash" role="img" aria-label="Sport Recap">
+    <div class="sb" aria-hidden="true">
+      <div class="top"><span>GAST</span><span>HEIM</span></div>
+      <div class="mid">
+        <div class="win"><div class="strip"><b>0</b><b>7</b><b>3</b><b>9</b><b>1</b><b>5</b><b>8</b><b>2</b><b>6</b><b>4</b><b>9</b><b>1</b><b>3</b><b>?</b></div></div>
+        <span class="colon">:</span>
+        <div class="win w2"><div class="strip"><b>0</b><b>4</b><b>8</b><b>2</b><b>6</b><b>1</b><b>9</b><b>3</b><b>7</b><b>5</b><b>2</b><b>8</b><b>4</b><b>?</b></div></div>
+      </div>
+      <div class="dots"><i style="animation-delay:1000ms"></i><i style="animation-delay:1080ms"></i><i style="animation-delay:1160ms"></i><i style="animation-delay:1240ms"></i><i style="animation-delay:1320ms"></i><i style="animation-delay:1400ms"></i><i style="animation-delay:1480ms"></i></div>
+    </div>
+    <div class="wm" aria-hidden="true">Sport <span>Recap</span></div>
+    <div class="tap" aria-hidden="true">Tippen zum Überspringen</div>
+  </div>
+  <script>
+    // Startbildschirm: läuft bei jedem frischen Laden 2 s (1,6 s + 0,4 s Ausblenden), Tippen überspringt
+    (function () {
+      var s = document.getElementById('splash');
+      var done = false;
+      function end(fast) {
+        if (done) return;
+        done = true;
+        s.classList.add(fast ? 'skip' : 'out');
+        setTimeout(function () { s.remove(); }, fast ? 220 : 420);
+      }
+      var t = setTimeout(function () { end(false); }, 1600);
+      s.addEventListener('click', function () { clearTimeout(t); end(true); });
+    })();
+  </script>
   <div id="app"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
