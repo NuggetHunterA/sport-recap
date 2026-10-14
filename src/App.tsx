@@ -5,6 +5,7 @@ import type { Favorite } from './favorites';
 import { TIER_TITLES, addDays, berlinToday, formatDay, formatTime, loadNight, loadUpcoming, prioritize } from './nights';
 import type { Night, Tier } from './nights';
 import { TeamsView } from './TeamsView';
+import { StandingsView } from './StandingsView';
 import { BoxSheet, canShowBox } from './BoxSheet';
 import type { RatedGame } from './nights';
 import type { Game } from './types';
@@ -12,7 +13,7 @@ import type { League } from './types';
 import { LEAGUES } from './types';
 
 type Filter = 'Alle' | League;
-type Tab = 'night' | 'tonight' | 'teams';
+type Tab = 'night' | 'tonight' | 'standings' | 'teams';
 
 const REVEALED_KEY = 'revealed:v1';
 
@@ -49,10 +50,12 @@ export function App() {
       <div class="glow" aria-hidden="true" />
       {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} />}
       {tab === 'tonight' && <TonightView filter={filter} setFilter={setFilter} favorites={favorites} />}
+      {tab === 'standings' && <StandingsView favorites={favorites} />}
       {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} />}
       <nav class="nav" aria-label="Hauptmenü">
         <button type="button" aria-current={tab === 'night' ? 'page' : undefined} onClick={() => setTab('night')}>{Icon.moon} Letzte Nacht</button>
         <button type="button" aria-current={tab === 'tonight' ? 'page' : undefined} onClick={() => setTab('tonight')}>{Icon.clock} Heute Abend</button>
+        <button type="button" aria-current={tab === 'standings' ? 'page' : undefined} onClick={() => setTab('standings')}>{Icon.standings} Tabellen</button>
         <button type="button" aria-current={tab === 'teams' ? 'page' : undefined} onClick={() => setTab('teams')}>{Icon.star} Meine Teams</button>
       </nav>
     </div>
