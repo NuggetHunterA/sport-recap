@@ -2,7 +2,7 @@
 import type { Game, League, Leader, ScoringPlay, SeasonType, Team } from './types';
 import { LEAGUES } from './types';
 
-const PATHS: Record<League, string> = {
+export const PATHS: Record<League, string> = {
   MLB: 'baseball/mlb',
   NBA: 'basketball/nba',
   NFL: 'football/nfl',
@@ -16,7 +16,7 @@ const MINUTE = 60 * 1000;
 const memory = new Map<string, { at: number; data: Promise<any> }>();
 
 /** Holt JSON und merkt es sich `ttl` lang, damit Tabwechsel ESPN nicht erneut abfragen. */
-async function getJson(url: string, ttl = 5 * MINUTE): Promise<any> {
+export async function getJson(url: string, ttl = 5 * MINUTE): Promise<any> {
   const hit = memory.get(url);
   if (hit && Date.now() - hit.at < ttl) return hit.data;
   const data = fetch(url).then((res) => {
