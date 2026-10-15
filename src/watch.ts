@@ -22,6 +22,8 @@ export function serviceName(game: Game): string {
 export interface WatchLinks {
   highlights?: string;
   full?: string;
+  /** Warum der Link zum ganzen Spiel fehlt, z. B. „nba.com nicht erreichbar“ */
+  problem?: string;
 }
 
 /* ---------- MLB.TV ---------- */
@@ -44,21 +46,27 @@ export function findMlbGame(schedule: any, game: Game): any | null {
     .sort((a, b) => Math.abs(Date.parse(a.gameDate) - start) - Math.abs(Date.parse(b.gameDate) - start))[0] ?? null;
 }
 
-/** Heim-Feed, außer ein Lieblingsteam spielt auswärts. Ohne Feed die Spielseite von MLB.TV. */
+/**
+ * Video-Übertragung mit Stream: die des Heimteams, außer ein Lieblingsteam spielt auswärts.
+ * In den Playoffs gibt es nur nationale Sender (FOX, TBS), dort zählt dieselbe Seite.
+ * Ohne passende Übertragung die Spielseite von MLB.TV.
+ */
 export function mlbTvUrl(mlbGame: any, game: Game, favs: Favorite[]): string {
-  const epg: any[] = mlbGame?.content?.media?.epg ?? [];
-  const feeds: any[] = epg.find((e) => e.title === 'MLBTV')?.items ?? [];
+  const tv: any[] = (mlbGame?.broadcasts ?? []).filter((b: any) => b.type === 'TV' && b.mediaId);
   const fav = favoriteOf(game, favs);
-  const wanted = fav && game.away.name.includes(fav.match) && !game.home.name.includes(fav.match) ? 'AWAY' : 'HOME';
-  const feed = feeds.find((f) => f.mediaFeedType === wanted)
-    ?? feeds.find((f) => f.mediaFeedType === 'NATIONAL')
-    ?? feeds[0];
+  const wanted = fav && game.away.name.includes(fav.match) && !game.home.name.includes(fav.match) ? 'away' : 'home';
+  const streams = tv.filter((b) => b.availableForStreaming);
+  const english = (list: any[]) => list.filter((b) => !b.language || b.language === 'en');
+  const feed = english(streams).find((b) => b.homeAway === wanted)
+    ?? english(streams)[0]
+    ?? streams[0]
+    ?? tv.find((b) => b.homeAway === wanted);
   const base = `https://www.mlb.com/tv/g${mlbGame.gamePk}`;
-  return feed?.mediaId ? `${base}/v${feed.mediaId}` : base;
+  return feed ? `${base}/v${feed.mediaId}` : base;
 }
 
 async function mlbFull(game: Game): Promise<string | undefined> {
-  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${usDate(game.start)}&hydrate=game(content(media(epg)))`;
+  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${usDate(game.start)}&hydrate=broadcasts(all)`;
   const mlbGame = findMlbGame(await getJson(url, game.state === 'in' ? 5 * 60 * 1000 : 12 * HOUR), game);
   return mlbGame ? mlbTvUrl(mlbGame, game, loadFavorites()) : undefined;
 }
@@ -89,10 +97,22 @@ async function nbaFull(game: Game): Promise<string | undefined> {
   return nbaGame ? nbaUrl(nbaGame) : undefined;
 }
 
-/** Link zum ganzen Spiel (live oder als Aufzeichnung), falls das Spiel zugeordnet werden kann. */
-export function fullGameLink(game: Game): Promise<string | undefined> {
-  if (!canWatch(game)) return Promise.resolve(undefined);
-  return (game.league === 'MLB' ? mlbFull(game) : nbaFull(game)).catch(() => undefined);
+/** Link zum ganzen Spiel (live oder als Aufzeichnung), sonst der Grund, warum er fehlt. */
+type FullGame = { url?: string; problem?: string };
+
+async function fullGame(game: Game): Promise<FullGame> {
+  if (!canWatch(game)) return {};
+  const source = game.league === 'MLB' ? 'MLB-Spielplan' : 'nba.com-Spielplan';
+  try {
+    const url = await (game.league === 'MLB' ? mlbFull(game) : nbaFull(game));
+    return url ? { url } : { problem: `Spiel nicht im ${source} gefunden` };
+  } catch {
+    return { problem: `${source} nicht erreichbar` };
+  }
+}
+
+export async function fullGameLink(game: Game): Promise<string | undefined> {
+  return (await fullGame(game)).url;
 }
 
 /* ---------- YouTube ---------- */
@@ -149,14 +169,15 @@ async function highlights(game: Game): Promise<string | undefined> {
 
 /* ---------- Beide Links, gefundene im Browser gemerkt ---------- */
 
-const CACHE = 'watch:v1:';
+// v2: v1 merkte sich bei Playoff-Spielen Links ohne Feed
+const CACHE = 'watch:v2:';
 
 /** Gemerkte Links nach zwei Wochen verwerfen */
 export function pruneWatch(storage: Storage = localStorage, now = Date.now()): void {
   try {
-    const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter((k): k is string => !!k?.startsWith(CACHE));
+    const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter((k): k is string => !!k?.startsWith('watch:'));
     for (const k of keys) {
-      const at = JSON.parse(storage.getItem(k) ?? '{}').at;
+      const at = k.startsWith(CACHE) ? JSON.parse(storage.getItem(k) ?? '{}').at : undefined;
       if (typeof at !== 'number' || now - at > 14 * 24 * HOUR) storage.removeItem(k);
     }
   } catch { /* kein Speicher verfügbar */ }
@@ -171,11 +192,11 @@ export async function loadWatchLinks(game: Game): Promise<WatchLinks> {
   const known = cached(game);
   const [hl, full] = await Promise.all([
     known.highlights ? Promise.resolve(known.highlights) : highlights(game).catch(() => undefined),
-    known.full ? Promise.resolve(known.full) : fullGameLink(game),
+    known.full ? Promise.resolve<FullGame>({ url: known.full }) : fullGame(game),
   ]);
-  const links: WatchLinks = { ...(hl ? { highlights: hl } : {}), ...(full ? { full } : {}) };
+  const found: WatchLinks = { ...(hl ? { highlights: hl } : {}), ...(full.url ? { full: full.url } : {}) };
   try {
-    if (links.highlights || links.full) localStorage.setItem(CACHE + game.id, JSON.stringify({ ...links, at: Date.now() }));
+    if (found.highlights || found.full) localStorage.setItem(CACHE + game.id, JSON.stringify({ ...found, at: Date.now() }));
   } catch { /* gesperrt */ }
-  return links;
+  return full.problem ? { ...found, problem: full.problem } : found;
 }

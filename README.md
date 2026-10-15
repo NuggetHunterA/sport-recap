@@ -53,9 +53,9 @@ Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, än
 Umgesetzt in `src/watch.ts` (Zuordnung, geprüft in `src/watch.test.ts`) und `src/WatchMenu.tsx` (Knopf und Menü). Nur MLB und NBA.
 
 - *Highlights:* Suche über die YouTube-API im offiziellen Kanal, bis 20 Stunden nach Anwurf, damit bei Serien nicht das nächste Spiel derselben Teams erscheint. Beide Teams und „Highlights“ müssen im Titel stehen; Zusammenfassungen des ganzen Spiels gehen vor. Der API-Schlüssel kommt beim Build aus dem GitHub-Secret `YT_KEY` (`VITE_YT_KEY`); ohne Schlüssel gibt es keinen Highlights-Link.
-- *MLB.TV:* Spiel über Datum und Teams im Spielplan der MLB-API, Link direkt in den Heim-Feed, bei einem Lieblingsteam auswärts in dessen Feed.
+- *MLB.TV:* Spiel über Datum und Teams im Spielplan der MLB-API (`hydrate=broadcasts(all)`), Link direkt in die TV-Übertragung des Heimteams, bei einem Lieblingsteam auswärts in dessen. Es zählen nur Übertragungen, die gestreamt werden, englische zuerst; in den Playoffs ist das die nationale (FOX, TBS).
 - *NBA:* Spiel über Teams und Anwurf im Spielplan von nba.com, Link auf die Spielseite mit Player. Spoilerschutz dort über „Hide Scores“ im NBA-Konto.
-- Gesucht wird erst beim Öffnen des Menüs; gefundene Links merkt sich der Browser zwei Wochen. Was nicht gefunden wird, fehlt im Menü und wird beim nächsten Öffnen erneut gesucht.
+- Gesucht wird erst beim Öffnen des Menüs; gefundene Links merkt sich der Browser zwei Wochen. Was nicht gefunden wird, fehlt im Menü und wird beim nächsten Öffnen erneut gesucht. Fehlt der Link zum ganzen Spiel, nennt das Menü klein den Grund (Spielplan nicht erreichbar oder Spiel nicht gefunden).
 - Das Menü liegt über einem Schleier. Ein Tipp daneben schließt nur das Menü und deckt kein Ergebnis auf. Die Links stehen auch auf verdeckten Karten.
 
 ## Tabellen

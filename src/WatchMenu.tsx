@@ -66,6 +66,7 @@ export function WatchButton({ game }: { game: Game }) {
               </a>
             )}
             {links && !links.highlights && !links.full && <div class="watch-note">Noch keine Links verfügbar.</div>}
+            {links?.problem && <div class="watch-note small">{links.problem}</div>}
           </div>
         </div>,
         document.body,
