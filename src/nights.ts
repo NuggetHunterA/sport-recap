@@ -4,7 +4,7 @@ import { scoreboards, withHalves, withPlays } from './espn';
 import { favoriteOf } from './favorites';
 import type { Favorite } from './favorites';
 import { bothStrong, isRivalry, rate } from './rating';
-import type { Game, League, Rating } from './types';
+import type { Game, League, LeagueFilter, Rating } from './types';
 
 const TZ = 'Europe/Berlin';
 
@@ -99,6 +99,51 @@ export async function loadNight(date: string, now = new Date()): Promise<Night> 
     try { localStorage.setItem(cacheKey(date), JSON.stringify(night)); } catch { /* voll oder gesperrt */ }
   }
   return night;
+}
+
+export interface ArrangedNight {
+  /** Spiel der Nacht */
+  hero: RatedGame | null;
+  /** Je Lieblingsteam im Filter sein Spiel, ohne Spiel `item` leer */
+  favs: { fav: Favorite; item?: RatedGame }[];
+  tips: RatedGame[];
+  rest: RatedGame[];
+  /** Kennzahlen, folgen dem Ligafilter */
+  played: number;
+  hot: number;
+  /** Nur die Anzahl noch laufender Spiele, ohne Teams oder Stand */
+  pending: number;
+}
+
+/**
+ * Verteilt die Spiele einer Nacht auf Spiel der Nacht, Meine Teams, Top-Tipps und Weitere Spiele.
+ * `hotOnly` (Tipp auf „Sehenswert“) blendet alle nicht sehenswerten Spiele aus.
+ */
+export function arrangeNight(night: Pick<Night, 'games' | 'pending'>, favorites: Favorite[], filter: LeagueFilter, hotOnly: boolean): ArrangedNight {
+  const inFilter = (league: League) => filter === 'Alle' || league === filter;
+  const shown = night.games.filter((g) => inFilter(g.game.league));
+  const isFav = (g: RatedGame) => favoriteOf(g.game, favorites) !== null;
+  // Ohne Ligafilter wird die NFL nie Spiel der Nacht oder Top-Tipp
+  const eligible = (g: RatedGame) => filter !== 'Alle' || g.game.league !== 'NFL';
+  // Meiste Balken zuerst, bei Gleichstand Playoffs und höherer Spannungswert
+  const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => b.rating.level - a.rating.level || a.rating.sortKey - b.rating.sortKey);
+  // Das spannendste sehenswerte Spiel, egal wie viele Balken; auch von einem Lieblingsteam
+  const hero = hotSorted.filter(eligible).sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
+  // Das Spiel der Nacht steht bei einem Lieblingsteam zusätzlich unter „Meine Teams“
+  const favs = favorites
+    .filter((f) => inFilter(f.league))
+    .map((fav) => ({ fav, item: shown.find((g) => favoriteOf(g.game, [fav])) }))
+    .filter(({ item }) => !hotOnly || item?.rating.hot);
+  // Höchstens 2 Top-Tipps, 3 wenn das Spiel der Nacht von einem Lieblingsteam ist; der Rest kommt zu „Weitere Spiele“
+  const others = hotSorted.filter((g) => !isFav(g) && g !== hero);
+  const tips = others.filter(eligible).slice(0, hero && isFav(hero) ? 3 : 2);
+  const rest = [...others.filter((g) => !tips.includes(g)), ...(hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot))];
+  return {
+    hero, favs, tips, rest,
+    played: shown.length,
+    hot: hotSorted.length,
+    pending: (night.pending ?? []).filter(inFilter).length,
+  };
 }
 
 export type Tier = 'favorite' | 'contender' | 'rivalry' | 'other';

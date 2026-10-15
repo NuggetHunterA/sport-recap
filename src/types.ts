@@ -2,6 +2,9 @@ export type League = 'MLB' | 'NBA' | 'NFL';
 
 export const LEAGUES: League[] = ['MLB', 'NBA', 'NFL'];
 
+/** Ligafilter oben in den Tabs */
+export type LeagueFilter = 'Alle' | League;
+
 export type SeasonType = 'preseason' | 'regular' | 'playoff';
 
 export interface Team {
