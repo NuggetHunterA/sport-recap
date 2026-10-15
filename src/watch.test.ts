@@ -14,15 +14,16 @@ const nba: Game = {
   away: team('Golden State Warriors', 'Warriors', 'GS'), home: team('Los Angeles Lakers', 'Lakers', 'LAL'),
 };
 
-const feeds = [
-  { mediaFeedType: 'NATIONAL', mediaId: 'nat' },
-  { mediaFeedType: 'AWAY', mediaId: 'away' },
-  { mediaFeedType: 'HOME', mediaId: 'home' },
+const broadcasts = [
+  { type: 'AM', homeAway: 'home', language: 'en', availableForStreaming: true, mediaId: 'radio' },
+  { type: 'TV', homeAway: 'away', language: 'en', availableForStreaming: true, mediaId: 'away' },
+  { type: 'TV', homeAway: 'home', language: 'es', availableForStreaming: true, mediaId: 'spanisch' },
+  { type: 'TV', homeAway: 'home', language: 'en', availableForStreaming: true, mediaId: 'home' },
 ];
 const mlbGame = (pk: number, date: string, away = 'Los Angeles Dodgers', home = 'Milwaukee Brewers') => ({
   gamePk: pk, gameDate: date,
   teams: { away: { team: { name: away } }, home: { team: { name: home } } },
-  content: { media: { epg: [{ title: 'MLBTV', items: feeds }, { title: 'Audio', items: [] }] } },
+  broadcasts,
 });
 
 describe('MLB.TV', () => {
@@ -47,7 +48,18 @@ describe('MLB.TV', () => {
     expect(mlbTvUrl(g, mlb, [dodgers])).toBe('https://www.mlb.com/tv/g7/vaway');
   });
 
-  it('fällt ohne Feeds auf die Spielseite zurück', () => {
+  it('nimmt in den Playoffs die nationale Übertragung, die gestreamt wird', () => {
+    // NLCS 2026: FS1 gibt es für beide Seiten, gestreamt wird nur die Heim-Übertragung
+    const playoff = { gamePk: 849811, broadcasts: [
+      { type: 'TV', homeAway: 'away', language: 'en', isNational: true, availableForStreaming: false, mediaId: 'fs1-away' },
+      { type: 'TV', homeAway: 'home', language: 'en', isNational: true, availableForStreaming: true, mediaId: 'fs1-home' },
+      { type: 'AM', homeAway: 'home', language: 'en', availableForStreaming: true, mediaId: 'radio' },
+    ] };
+    const dodgers: Favorite = { league: 'MLB', match: 'Dodgers', label: 'Dodgers' };
+    expect(mlbTvUrl(playoff, mlb, [dodgers])).toBe('https://www.mlb.com/tv/g849811/vfs1-home');
+  });
+
+  it('fällt ohne Übertragungen auf die Spielseite zurück', () => {
     expect(mlbTvUrl({ gamePk: 7 }, mlb, [])).toBe('https://www.mlb.com/tv/g7');
   });
 });
@@ -91,10 +103,11 @@ describe('YouTube-Highlights', () => {
 });
 
 describe('pruneWatch', () => {
-  it('verwirft Links, die älter als zwei Wochen sind', () => {
+  it('verwirft Links, die älter als zwei Wochen sind, und alte Versionen', () => {
     const store = new Map<string, string>([
-      ['watch:v1:1', JSON.stringify({ full: 'x', at: 0 })],
-      ['watch:v1:2', JSON.stringify({ full: 'y', at: 20 * 24 * 3600e3 })],
+      ['watch:v2:1', JSON.stringify({ full: 'x', at: 0 })],
+      ['watch:v2:2', JSON.stringify({ full: 'y', at: 20 * 24 * 3600e3 })],
+      ['watch:v1:3', JSON.stringify({ full: 'z', at: 20 * 24 * 3600e3 })],
       ['night:v3:x', '{}'],
     ]);
     const storage = {
@@ -104,6 +117,6 @@ describe('pruneWatch', () => {
       removeItem: (k: string) => { store.delete(k); },
     } as unknown as Storage;
     pruneWatch(storage, 21 * 24 * 3600e3);
-    expect([...store.keys()]).toEqual(['watch:v1:2', 'night:v3:x']);
+    expect([...store.keys()]).toEqual(['watch:v2:2', 'night:v3:x']);
   });
 });
