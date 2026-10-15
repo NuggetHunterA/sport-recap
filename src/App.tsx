@@ -7,7 +7,6 @@ import type { Night, Tier } from './nights';
 import { TeamsView } from './TeamsView';
 import { StandingsView } from './StandingsView';
 import { BoxSheet, canShowBox } from './BoxSheet';
-import { forgetFresh } from './espn';
 import { PullToRefresh, Refresh, useLoad } from './refresh';
 import type { RatedGame } from './nights';
 import type { Game } from './types';
@@ -53,8 +52,8 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
+  // Ziehen nutzt wie alles andere den 5-Minuten-Zwischenspeicher in getJson
   const onPull = useCallback(() => {
-    forgetFresh();
     setPulling(true);
     setStamp((n) => n + 1);
   }, []);
