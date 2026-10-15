@@ -54,7 +54,7 @@ Umgesetzt in `src/watch.ts` (Zuordnung, geprüft in `src/watch.test.ts`) und `sr
 
 - *Highlights:* Suche über die YouTube-API im offiziellen Kanal, bis 20 Stunden nach Anwurf, damit bei Serien nicht das nächste Spiel derselben Teams erscheint. Beide Teams und „Highlights“ müssen im Titel stehen; Zusammenfassungen des ganzen Spiels gehen vor. Der API-Schlüssel kommt beim Build aus dem GitHub-Secret `YT_KEY` (`VITE_YT_KEY`); ohne Schlüssel gibt es keinen Highlights-Link.
 - *MLB.TV:* Spiel über Datum und Teams im Spielplan der MLB-API (`hydrate=broadcasts(all)`), Link direkt in die TV-Übertragung des Heimteams, bei einem Lieblingsteam auswärts in dessen. Es zählen nur Übertragungen, die gestreamt werden, englische zuerst; in den Playoffs ist das die nationale (FOX, TBS).
-- *NBA:* Spiel über Teams und Anwurf im Spielplan von nba.com, Link auf die Spielseite mit Player. Spoilerschutz dort über „Hide Scores“ im NBA-Konto.
+- *NBA:* Spiel über Teams und Anwurf im Spielplan von nba.com, Link auf die Spielseite mit Player. Spoilerschutz dort über „Hide Scores“ im NBA-Konto. nba.com sperrt den Abruf aus dem Browser, darum holt der Build den Spielplan (`scripts/nba-schedule.ts`) und legt ihn verkleinert als `nba-schedule.json` neben die App; der Deploy-Workflow baut dafür zusätzlich jeden Tag um 10 Uhr UTC.
 - Gesucht wird erst beim Öffnen des Menüs; gefundene Links merkt sich der Browser zwei Wochen. Was nicht gefunden wird, fehlt im Menü und wird beim nächsten Öffnen erneut gesucht. Fehlt der Link zum ganzen Spiel, nennt das Menü klein den Grund (Spielplan nicht erreichbar oder Spiel nicht gefunden).
 - Das Menü liegt über einem Schleier. Ein Tipp daneben schließt nur das Menü und deckt kein Ergebnis auf. Die Links stehen auch auf verdeckten Karten.
 
@@ -138,6 +138,7 @@ Herleitung, Backtests und verworfene Varianten stehen im Projektordner unter `do
 - `src/teams.ts`: feste Teamliste für „Meine Teams“
 - `src/favorites.ts`: Lieblingsteams laden, speichern und Spielen zuordnen
 - `src/watch.ts`, `src/WatchMenu.tsx`: Links zu Highlights und zum ganzen Spiel, Play-Knopf mit Menü
+- `scripts/nba-schedule.ts`: NBA-Spielplan beim Build holen
 
 ## Entwicklung
 

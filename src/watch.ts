@@ -73,27 +73,50 @@ async function mlbFull(game: Game): Promise<string | undefined> {
 
 /* ---------- NBA League Pass ---------- */
 
-/** Passendes Spiel aus dem NBA-Spielplan: gleiche Teams, Anwurf höchstens drei Stunden daneben. */
-export function findNbaGame(schedule: any, game: Game): any | null {
-  const start = Date.parse(game.start);
+/** Ein Spiel aus dem verkleinerten NBA-Spielplan */
+export interface NbaGame {
+  id: string;
+  /** Anwurf, ISO in UTC */
+  t: string;
+  /** Kürzel und Spitzname von Auswärts- und Heimteam, z. B. "GSW", "Warriors" */
+  at: string; an: string;
+  ht: string; hn: string;
+}
+
+/**
+ * Verkleinert den Saisonspielplan von nba.com auf das, was die App braucht. Läuft beim Build
+ * (`scripts/nba-schedule.ts`), weil nba.com den Abruf direkt aus dem Browser sperrt.
+ */
+export function slimNbaSchedule(schedule: any): NbaGame[] {
+  const out: NbaGame[] = [];
   for (const day of schedule?.leagueSchedule?.gameDates ?? []) {
     for (const g of day.games ?? []) {
-      if (g.awayTeam?.teamName === game.away.short && g.homeTeam?.teamName === game.home.short
-        && Math.abs(Date.parse(g.gameDateTimeUTC) - start) < 3 * HOUR) return g;
+      if (!g.gameId || !g.awayTeam?.teamTricode || !g.homeTeam?.teamTricode) continue;
+      out.push({
+        id: g.gameId, t: g.gameDateTimeUTC,
+        at: g.awayTeam.teamTricode, an: g.awayTeam.teamName ?? '',
+        ht: g.homeTeam.teamTricode, hn: g.homeTeam.teamName ?? '',
+      });
     }
   }
-  return null;
+  return out;
+}
+
+/** Passendes Spiel: gleiche Teams, Anwurf höchstens drei Stunden daneben. */
+export function findNbaGame(games: NbaGame[], game: Game): NbaGame | null {
+  const start = Date.parse(game.start);
+  return games.find((g) => g.an === game.away.short && g.hn === game.home.short
+    && Math.abs(Date.parse(g.t) - start) < 3 * HOUR) ?? null;
 }
 
 /** Spielseite auf nba.com, `?watch` öffnet dort den Player. */
-export function nbaUrl(nbaGame: any): string {
-  const slug = `${nbaGame.awayTeam.teamTricode}-vs-${nbaGame.homeTeam.teamTricode}-${nbaGame.gameId}`.toLowerCase();
-  return `https://www.nba.com/game/${slug}?watch`;
+export function nbaUrl(g: NbaGame): string {
+  return `https://www.nba.com/game/${`${g.at}-vs-${g.ht}-${g.id}`.toLowerCase()}?watch`;
 }
 
 async function nbaFull(game: Game): Promise<string | undefined> {
-  const schedule = await getJson('https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json', 12 * HOUR);
-  const nbaGame = findNbaGame(schedule, game);
+  const games: NbaGame[] = await getJson(`${import.meta.env.BASE_URL}nba-schedule.json`, 12 * HOUR);
+  const nbaGame = findNbaGame(games, game);
   return nbaGame ? nbaUrl(nbaGame) : undefined;
 }
 

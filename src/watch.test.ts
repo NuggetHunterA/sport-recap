@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findMlbGame, findNbaGame, mlbTvUrl, nbaUrl, pickHighlight, pruneWatch, usDate } from './watch';
+import { findMlbGame, findNbaGame, mlbTvUrl, nbaUrl, pickHighlight, pruneWatch, slimNbaSchedule, usDate } from './watch';
 import type { Game, Team } from './types';
 import type { Favorite } from './favorites';
 
@@ -65,18 +65,27 @@ describe('MLB.TV', () => {
 });
 
 describe('NBA League Pass', () => {
-  const schedule = { leagueSchedule: { gameDates: [{ games: [
+  const raw = { leagueSchedule: { gameDates: [{ games: [
     { gameId: '0022500001', gameDateTimeUTC: '2025-10-22T02:00:00Z', awayTeam: { teamName: 'Warriors', teamTricode: 'GSW' }, homeTeam: { teamName: 'Lakers', teamTricode: 'LAL' } },
     { gameId: '0022500099', gameDateTimeUTC: '2025-12-25T02:00:00Z', awayTeam: { teamName: 'Warriors', teamTricode: 'GSW' }, homeTeam: { teamName: 'Lakers', teamTricode: 'LAL' } },
+    { gameId: '0012500007', gameDateTimeUTC: '2025-10-05T10:00:00Z', awayTeam: { teamName: 'Breakers', teamTricode: null }, homeTeam: { teamName: 'Pelicans', teamTricode: 'NOP' } },
   ] }] } };
+  const games = slimNbaSchedule(raw);
+
+  it('verkleinert den Spielplan und lässt Spiele ohne Kürzel weg', () => {
+    expect(games).toEqual([
+      { id: '0022500001', t: '2025-10-22T02:00:00Z', at: 'GSW', an: 'Warriors', ht: 'LAL', hn: 'Lakers' },
+      { id: '0022500099', t: '2025-12-25T02:00:00Z', at: 'GSW', an: 'Warriors', ht: 'LAL', hn: 'Lakers' },
+    ]);
+  });
 
   it('findet das Spiel über Teams und Anwurf', () => {
-    expect(findNbaGame(schedule, nba)?.gameId).toBe('0022500001');
-    expect(findNbaGame(schedule, { ...nba, start: '2025-11-01T02:00Z' })).toBeNull();
+    expect(findNbaGame(games, nba)?.id).toBe('0022500001');
+    expect(findNbaGame(games, { ...nba, start: '2025-11-01T02:00Z' })).toBeNull();
   });
 
   it('baut den Link auf die Spielseite', () => {
-    expect(nbaUrl(findNbaGame(schedule, nba))).toBe('https://www.nba.com/game/gsw-vs-lal-0022500001?watch');
+    expect(nbaUrl(findNbaGame(games, nba)!)).toBe('https://www.nba.com/game/gsw-vs-lal-0022500001?watch');
   });
 });
 
