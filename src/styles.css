@@ -266,3 +266,25 @@ body.locked { overflow: hidden; }
   .feat-band.celebrate, .feat-band.celebrate::after, .feat-band.celebrate .feat-icon, .sparks i { animation: none; }
   .sparks { display: none; }
 }
+
+/* Ansehen: Play-Knopf mit Menü (Highlights, ganzes Spiel) und Live-Link */
+.top-right { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.play-btn { width: 34px; height: 34px; margin: -6px -4px -6px 0; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(160,80,42,.4); background: rgba(160,80,42,.1); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; }
+.play-btn svg { margin-left: 2px; }
+.play-btn.active { background: var(--accent); color: var(--accent-ink); }
+.hero .play-btn { width: 40px; height: 40px; margin: -4px 0; background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.25); color: #fff; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.hero .play-btn.active { background: #fff; color: #111; }
+.watch-layer { position: fixed; inset: 0; z-index: 60; background: rgba(43,32,23,.25); animation: fade .15s ease-out; }
+.watch-menu { position: fixed; width: 230px; padding: 6px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 14px 34px rgba(70,45,25,.28); display: flex; flex-direction: column; }
+.watch-menu a { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 10px; border-radius: 10px; text-decoration: none; color: var(--text); }
+.watch-menu a + a { border-top: 1px solid var(--line); }
+.watch-menu b { display: block; font-size: 14px; }
+.watch-menu small { font-size: 12px; color: var(--muted); }
+.watch-note { padding: 12px 10px; font-size: 13px; color: var(--muted); }
+.yt-logo { width: 22px; height: 16px; border-radius: 5px; background: #e62117; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.yt-logo svg { width: 9px; height: 9px; }
+.svc-logo { min-width: 22px; height: 16px; padding: 0 4px; border-radius: 5px; color: #fff; font: 800 10px/16px var(--display); letter-spacing: .04em; text-align: center; flex-shrink: 0; }
+.svc-logo.nba { background: linear-gradient(90deg, #1d428a 50%, #c8102e 50%); }
+.svc-logo.mlb { background: linear-gradient(90deg, #041e42 50%, #bf0d3e 50%); }
+a.live-link { text-decoration: none; padding: 6px 8px; margin: -6px -6px -6px 0; border-radius: 12px; background: rgba(255,77,77,.1); border: 1px solid rgba(255,77,77,.35); }
+a.live-link .live-word { display: inline-flex; align-items: center; gap: 5px; }

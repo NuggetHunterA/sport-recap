@@ -6,6 +6,8 @@ import type { Game, Team } from './types';
 import type { Favorite } from './favorites';
 import { historicFeats } from './rating';
 import { TEAMS } from './teams';
+import { canWatch, serviceName } from './watch';
+import { WatchButton, useLiveLink } from './WatchMenu';
 
 export const Icon = {
   close: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>,
@@ -22,6 +24,7 @@ export const Icon = {
   left: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>,
   trophy: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" /></svg>,
   refresh: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 4v5h-5" /></svg>,
+  play: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" /></svg>,
   right: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>,
 };
 
@@ -115,7 +118,10 @@ export function Hero({ item, open, toggle, onBox }: CardProps) {
         <div class="hero-body">
           <div class="hero-top">
             <span class="tag">{label(game)}</span>
-            <span class="reason-chip">{rating.reason}</span>
+            <span class="top-right">
+              <span class="reason-chip">{rating.reason}</span>
+              {canWatch(game) && <WatchButton game={game} />}
+            </span>
           </div>
           <div class="versus">
             <div class="side" style={colors(game.away)}><span class="disc"><Badge team={game.away} size={60} light /></span><span class="side-name">{game.away.short}</span></div>
@@ -155,7 +161,10 @@ export function GameCard({ item, open, toggle, onBox }: CardProps) {
     <Shell away={game.away.color} home={game.home.color} hot={rating.hot} onClick={open ? openBox(onBox) : undefined}>
       <div class="card-top">
         <div class="meta"><span class="league">{game.league}</span><span>{label(game)}</span></div>
-        <Meter level={rating.level} />
+        <span class="top-right">
+          <Meter level={rating.level} />
+          {canWatch(game) && <WatchButton game={game} />}
+        </span>
       </div>
       <div class="card-main">
         <div class="badges"><Badge team={game.away} size={40} /><Badge team={game.home} size={40} /></div>
@@ -217,11 +226,23 @@ export function UpcomingCard({ item }: { item: Upcoming }) {
           {hint && <small class="hot">{hint}</small>}
         </div>
         {game.state === 'in'
-          ? <div class="time live">Live<small>{liveLabel(game)}</small></div>
+          ? <LiveTime game={game} />
           : <div class="time">{formatTime(game.start)}<small>Uhr</small></div>}
       </div>
     </Shell>
   );
+}
+
+/** Live-Feld unter „Läuft gerade“, mit Link zum Stream, sobald das Spiel zugeordnet ist */
+function LiveTime({ game }: { game: Game }) {
+  const url = useLiveLink(game);
+  return url
+    ? (
+      <a class="time live live-link" href={url} target="_blank" rel="noopener" aria-label={`Live ansehen bei ${serviceName(game)}, ${liveLabel(game)}`}>
+        <span class="live-word">{Icon.play} Live</span><small>{liveLabel(game)}</small>
+      </a>
+    )
+    : <div class="time live">Live<small>{liveLabel(game)}</small></div>;
 }
 
 export function Skeletons() {

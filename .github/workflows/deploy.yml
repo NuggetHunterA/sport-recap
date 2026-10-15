@@ -29,6 +29,7 @@ jobs:
       - run: npm run build
         env:
           BASE: /${{ github.event.repository.name }}/
+          VITE_YT_KEY: ${{ secrets.YT_KEY }}
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
