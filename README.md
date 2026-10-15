@@ -14,6 +14,7 @@ Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, än
 - Darunter in dieser Reihenfolge: Spiel der Nacht, Meine Teams, Top-Tipps, Weitere Spiele (eingeklappt).
 - Jedes Spiel mit Balken (1 bis 5, siehe [Bewertung](#bewertung)) und einem Label, das nichts verrät.
 - Mit den Pfeilen geht es zu früheren Nächten.
+- Bei MLB und NBA öffnet der runde Play-Knopf oben rechts ein Menü mit „Highlights“ (Video auf YouTube bei @MLB oder @NBA) und „Ganzes Spiel“ (MLB.TV oder NBA League Pass), siehe [Ansehen](#ansehen).
 
 **Nach welchen Regeln** (umgesetzt in `arrangeNight` in `src/nights.ts`, geprüft in `src/nights.test.ts`)
 
@@ -36,7 +37,7 @@ Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, än
 **Was gezeigt wird**
 
 - Alle Spiele der nächsten 24 Stunden mit deutscher Uhrzeit.
-- Laufende Spiele oben unter „Läuft gerade“.
+- Laufende Spiele oben unter „Läuft gerade“. Bei MLB und NBA ist das rote Live-Feld ein Link zum Stream (MLB.TV oder League Pass).
 - Kennzahlen Spiele, Highlights und Erstes Spiel, nach dem Ligafilter.
 
 **Nach welchen Regeln**
@@ -46,6 +47,16 @@ Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, än
 **Was nie verraten wird**
 
 - Laufende Spiele ohne Spielstand und ab der Schlussphase (9. Inning, 4. Viertel) ohne genaue Periode, weil Verlängerung und Extra Innings ein enges Spiel verraten.
+
+## Ansehen
+
+Umgesetzt in `src/watch.ts` (Zuordnung, geprüft in `src/watch.test.ts`) und `src/WatchMenu.tsx` (Knopf und Menü). Nur MLB und NBA.
+
+- *Highlights:* Suche über die YouTube-API im offiziellen Kanal, bis 20 Stunden nach Anwurf, damit bei Serien nicht das nächste Spiel derselben Teams erscheint. Beide Teams und „Highlights“ müssen im Titel stehen; Zusammenfassungen des ganzen Spiels gehen vor. Der API-Schlüssel kommt beim Build aus dem GitHub-Secret `YT_KEY` (`VITE_YT_KEY`); ohne Schlüssel gibt es keinen Highlights-Link.
+- *MLB.TV:* Spiel über Datum und Teams im Spielplan der MLB-API, Link direkt in den Heim-Feed, bei einem Lieblingsteam auswärts in dessen Feed.
+- *NBA:* Spiel über Teams und Anwurf im Spielplan von nba.com, Link auf die Spielseite mit Player. Spoilerschutz dort über „Hide Scores“ im NBA-Konto.
+- Gesucht wird erst beim Öffnen des Menüs; gefundene Links merkt sich der Browser zwei Wochen. Was nicht gefunden wird, fehlt im Menü und wird beim nächsten Öffnen erneut gesucht.
+- Das Menü liegt über einem Schleier. Ein Tipp daneben schließt nur das Menü und deckt kein Ergebnis auf. Die Links stehen auch auf verdeckten Karten.
 
 ## Tabellen
 
@@ -110,7 +121,7 @@ Herleitung, Backtests und verworfene Varianten stehen im Projektordner unter `do
 
 ## Daten und Aktualität
 
-- Daten kommen direkt im Browser von der inoffiziellen ESPN-API.
+- Daten kommen direkt im Browser von der inoffiziellen ESPN-API. Für die Links zum Ansehen zusätzlich vom Spielplan der MLB-API und von nba.com sowie von der YouTube-API.
 - Spielpläne werden höchstens alle 5 Minuten neu geladen, Spielverläufe beendeter Spiele einmal am Tag, Tabellen höchstens alle 30 Minuten.
 - Beim Zurückkehren in die App wird neu geladen. Stand man auf der aktuellen Nacht, springt die Ansicht auf die neue; ein geöffnetes Archiv bleibt stehen.
 - Herunterziehen am Seitenanfang lädt ebenfalls neu, mit demselben 5-Minuten-Zwischenspeicher.
@@ -126,6 +137,7 @@ Herleitung, Backtests und verworfene Varianten stehen im Projektordner unter `do
 - `src/config.ts`: Standard-Lieblingsteams, Rivalitäten, Grenze für Top-Matchups
 - `src/teams.ts`: feste Teamliste für „Meine Teams“
 - `src/favorites.ts`: Lieblingsteams laden, speichern und Spielen zuordnen
+- `src/watch.ts`, `src/WatchMenu.tsx`: Links zu Highlights und zum ganzen Spiel, Play-Knopf mit Menü
 
 ## Entwicklung
 
