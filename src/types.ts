@@ -2,6 +2,13 @@ export type League = 'MLB' | 'NBA' | 'NFL';
 
 export const LEAGUES: League[] = ['MLB', 'NBA', 'NFL'];
 
+/** Ligen mit Bewertung. Die NFL wird nur angezeigt: ohne Balken, Label und Empfehlung. */
+export type RatedLeague = Exclude<League, 'NFL'>;
+
+export function isRated(league: League): league is RatedLeague {
+  return league !== 'NFL';
+}
+
 /** Ligafilter oben in den Tabs */
 export type LeagueFilter = 'Alle' | League;
 

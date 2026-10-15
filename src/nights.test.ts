@@ -40,6 +40,8 @@ describe('arrangeNight', () => {
     const game: Game = { id: String(++n), league, start: '2026-10-14T01:00:00Z', state: 'post', season: 'regular', away: t(away), home: t(home) };
     return { game, rating: { rivalry: false, strong: false, historic: false, score, hot: level >= 3, level, reason: '', sortKey } };
   };
+  /** NFL-Spiel ohne Bewertung */
+  const nfl = (away: string, home: string): RatedGame => ({ ...rg('NFL', away, home, 0), rating: null });
   const fav = (league: League, match: string): Favorite => ({ league, match, label: match });
   const ids = (xs: RatedGame[]) => xs.map((g) => `${g.game.away.name}-${g.game.home.name}`);
 
@@ -92,21 +94,30 @@ describe('arrangeNight', () => {
     ]);
   });
 
-  it('ohne Ligafilter wird die NFL weder Spiel der Nacht noch Top-Tipp', () => {
-    const nfl = rg('NFL', 'Packers', 'Bears', 5, 100);
-    const night = arrangeNight({ games: [nfl, rg('MLB', 'A', 'B', 3, 40)] }, [], 'Alle', false);
+  it('die unbewertete NFL ist nie Spiel der Nacht, Top-Tipp oder sehenswert und steht ganz unten unter „Weitere Spiele“', () => {
+    const packers = nfl('Packers', 'Bears');
+    const night = arrangeNight({ games: [packers, rg('MLB', 'A', 'B', 3, 90), rg('MLB', 'C', 'D', 4), rg('MLB', 'E', 'F', 1)] }, [], 'Alle', false);
     expect(ids([night.hero!])).toEqual(['A-B']);
-    expect(night.tips).toEqual([]);
-    expect(night.rest).toEqual([nfl]);
+    expect(ids(night.tips)).toEqual(['C-D']);
+    expect(ids(night.rest)).toEqual(['E-F', 'Packers-Bears']);
+    expect(night.hot).toBe(2);
   });
 
-  it('mit NFL-Filter gelten für die NFL dieselben Regeln wie für die anderen Ligen', () => {
-    const a = rg('NFL', 'Packers', 'Bears', 5, 100);
-    const b = rg('NFL', 'Chiefs', 'Bills', 4, 60);
-    const night = arrangeNight({ games: [a, b, rg('MLB', 'C', 'D', 5)] }, [], 'NFL', false);
-    expect(night.hero).toBe(a);
-    expect(night.tips).toEqual([b]);
+  it('mit NFL-Filter gibt es weder Spiel der Nacht noch Top-Tipps, nur Lieblingsteams und „Weitere Spiele“', () => {
+    const chiefs = nfl('Chiefs', 'Bills');
+    const night = arrangeNight({ games: [nfl('Packers', 'Bears'), chiefs, rg('MLB', 'C', 'D', 5)] }, [fav('NFL', 'Chiefs')], 'NFL', false);
+    expect(night.hero).toBeNull();
+    expect(night.tips).toEqual([]);
+    expect(night.favs.map(({ item }) => item)).toEqual([chiefs]);
+    expect(ids(night.rest)).toEqual(['Packers-Bears']);
     expect(night.played).toBe(2);
+    expect(night.hot).toBe(0);
+  });
+
+  it('„Sehenswert“ blendet auch NFL-Spiele aus, auch die von Lieblingsteams', () => {
+    const night = arrangeNight({ games: [nfl('Chiefs', 'Bills'), nfl('Packers', 'Bears'), rg('MLB', 'A', 'B', 4)] }, [fav('NFL', 'Chiefs')], 'Alle', true);
+    expect(night.favs).toEqual([]);
+    expect(night.rest).toEqual([]);
   });
 
   it('der Ligafilter gilt für Spiele, Lieblingsteams, Kennzahlen und laufende Spiele', () => {

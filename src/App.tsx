@@ -114,7 +114,7 @@ function NightView(props: {
   revealed: Set<string>; toggle: (id: string) => () => void; favorites: Favorite[];
 }) {
   const { date, today, setDate, filter, setFilter, revealed, toggle, favorites } = props;
-  const card = (item: RatedGame) => ({
+  const card = <T extends RatedGame>(item: T) => ({
     item,
     open: revealed.has(item.game.id),
     toggle: toggle(item.game.id),

@@ -1,6 +1,6 @@
 # Sport Recap
 
-Spoilerfreie Übersicht der Spiele von letzter Nacht (MLB, NBA, NFL) als Web-App für das Handy.
+Spoilerfreie Übersicht der Spiele von letzter Nacht (MLB, NBA, NFL) als Web-App für das Handy. Bewertet werden nur MLB und NBA; die NFL wird angezeigt, aber nicht bewertet.
 Hervorgegangen aus einer Home-Assistant-Automation.
 
 Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, ändert sie hier mit.
@@ -10,9 +10,9 @@ Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, än
 **Was gezeigt wird**
 
 - Alle Spiele, deren Start zwischen 12 Uhr am Vortag und 12 Uhr am gewählten Tag (Berliner Zeit) liegt und die beendet sind.
-- Oben die Kennzahlen Spiele, Sehenswert und Verzichtbar; sie folgen dem Ligafilter. Ein Tipp auf „Sehenswert“ zeigt nur noch die sehenswerten Spiele.
+- Oben die Kennzahlen Spiele, Sehenswert und Verzichtbar; sie folgen dem Ligafilter. NFL-Spiele zählen nie als sehenswert. Ein Tipp auf „Sehenswert“ zeigt nur noch die sehenswerten Spiele.
 - Darunter in dieser Reihenfolge: Spiel der Nacht, Meine Teams, Top-Tipps, Weitere Spiele (eingeklappt).
-- Jedes Spiel mit Balken (1 bis 5, siehe [Bewertung](#bewertung)) und einem Label, das nichts verrät.
+- Jedes MLB- und NBA-Spiel mit Balken (1 bis 5, siehe [Bewertung](#bewertung)) und einem Label, das nichts verrät. NFL-Spiele haben weder Balken noch Label.
 - Mit den Pfeilen geht es zu früheren Nächten.
 - Bei MLB und NBA öffnet der runde Play-Knopf oben rechts ein Menü mit „Highlights“ (Video auf YouTube bei @MLB oder @NBA) und „Ganzes Spiel“ (MLB.TV oder NBA League Pass), siehe [Ansehen](#ansehen).
 
@@ -22,7 +22,7 @@ Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, än
 - *Meine Teams:* je Lieblingsteam sein Spiel. Lieblingsteams ohne Spiel stehen gesammelt in einer kleinen Kachel.
 - *Top-Tipps:* die sehenswerten Spiele ohne Lieblingsteam, meiste Balken zuerst, bei Gleichstand Playoffs und höhere Spannung. Höchstens 2, oder 3, wenn das Spiel der Nacht von einem Lieblingsteam ist.
 - *Weitere Spiele:* zuerst die übrigen sehenswerten Spiele, dann alle anderen ohne Lieblingsteam.
-- *NFL:* Ohne Ligafilter wird ein NFL-Spiel weder Spiel der Nacht noch Top-Tipp und steht unter „Weitere Spiele“ (oder unter „Meine Teams“). Mit NFL-Filter gelten die normalen Regeln.
+- *NFL:* nie Spiel der Nacht, Top-Tipp oder sehenswert, auch nicht mit NFL-Filter. Ein NFL-Spiel steht unter „Meine Teams“ oder ganz unten unter „Weitere Spiele“, mit Aufdecken und Boxscore. Ein Tipp auf „Sehenswert“ blendet NFL-Spiele aus.
 - Spiele, die beim Laden noch laufen, fehlen; ein Hinweis nennt nur ihre Anzahl. Sobald sie beendet sind, erscheinen sie beim nächsten Laden.
 
 **Was nie verraten wird**
@@ -43,6 +43,7 @@ Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, än
 **Nach welchen Regeln**
 
 - Gruppiert nach Lieblingsteams, Top-Matchups (Playoffs oder beide Teams mit mindestens 55 % Siegen nach 4 Spielen), Rivalitäten und dem Rest, innerhalb der Gruppe nach Uhrzeit.
+- NFL-Spiele sind nie Top-Matchup oder Rivalität: Sie stehen bei Lieblingsteams oben, sonst unter dem Rest.
 
 **Was nie verraten wird**
 
@@ -81,19 +82,19 @@ Umgesetzt in `src/watch.ts` (Zuordnung, geprüft in `src/watch.test.ts`) und `sr
 
 ## Benachrichtigungen
 
-- Morgens um 8 Uhr die Spiele der Lieblingsteams mit Balken und ein Top-Tipp ohne Lieblingsteam und ohne NFL.
-- Nachmittags um 15 Uhr nur, wenn ein Lieblingsteam oder ein Top-Matchup (ohne NFL) vor 23 Uhr startet. Ein Tipp öffnet „Heute Abend“.
+- Morgens um 8 Uhr die Spiele der Lieblingsteams mit Balken (NFL ohne) und ein Top-Tipp ohne Lieblingsteam. Die Zahl der sehenswerten Spiele im Titel zählt nur MLB und NBA.
+- Nachmittags um 15 Uhr nur, wenn ein Lieblingsteam oder ein Top-Matchup (nie NFL) vor 23 Uhr startet. Ein Tipp öffnet „Heute Abend“.
 - Nie mit Ergebnis.
 - Gesendet wird vom Workflow `.github/workflows/notify.yml` (Skript `scripts/notify.ts`, Texte in `src/notify.ts`). GitHub startet geplante Läufe teils mit Verspätung.
 - Einrichten: in „Meine Teams“ auf „Benachrichtigungen einrichten“ tippen und den kopierten Code im Repo unter Settings → Secrets and variables → Actions als Secret `PUSH_CONFIG` speichern. Nach Änderungen an den Lieblingsteams den Code neu kopieren.
 
 ## Bewertung
 
-Jedes beendete Spiel bekommt eine Spannung von 0 bis 100 und daraus 1 bis 5 Balken (`src/curve.ts`, `src/rating.ts`).
+Jedes beendete MLB- und NBA-Spiel bekommt eine Spannung von 0 bis 100 und daraus 1 bis 5 Balken (`src/curve.ts`, `src/rating.ts`). Die NFL wird nicht bewertet; für sie gibt es keine Grenzen, Rivalitäten oder historischen Leistungen.
 
 **Spannungskurve**
 
-- Für jeden Moment (MLB zu Beginn jedes Halbinnings, NBA/NFL alle 30 Sekunden) wird berechnet, wie offen das Spiel war, also wie groß der Abstand im Verhältnis zur Restzeit ist.
+- Für jeden Moment (MLB zu Beginn jedes Halbinnings, NBA alle 30 Sekunden) wird berechnet, wie offen das Spiel war, also wie groß der Abstand im Verhältnis zur Restzeit ist.
 - In der MLB verringern Runner des zurückliegenden Teams auf Base den Abstand (aus den Play-by-Play-Daten von ESPN).
 - Ohne Spielverlauf zählt nur der Endabstand.
 
@@ -131,10 +132,10 @@ Herleitung, Backtests und verworfene Varianten stehen im Projektordner unter `do
 
 - `src/nights.ts`: Zeitfenster, Laden der Nächte, Aufteilung von „Letzte Nacht“ (`arrangeNight`) und Gruppen von „Heute Abend“
 - `src/curve.ts`: Spannungskurve (Offenheit je Moment und Kennzahlen)
-- `src/rating.ts`: Bewertung (Kontext, Grenzen je Liga, spoilerfreie Gründe)
+- `src/rating.ts`: Bewertung von MLB und NBA (Kontext, Grenzen je Liga, spoilerfreie Gründe)
 - `src/boxscore.ts`, `src/BoxSheet.tsx`: Boxscore aus der ESPN-Spielzusammenfassung und die Ansicht dazu
 - `src/standings.ts`, `src/StandingsView.tsx`: Tabellen von ESPN, Wild Card und die Ansicht dazu
-- `src/config.ts`: Standard-Lieblingsteams, Rivalitäten, Grenze für Top-Matchups
+- `src/config.ts`: Standard-Lieblingsteams, Rivalitäten (MLB, NBA), Grenze für Top-Matchups
 - `src/teams.ts`: feste Teamliste für „Meine Teams“
 - `src/favorites.ts`: Lieblingsteams laden, speichern und Spielen zuordnen
 - `src/watch.ts`, `src/WatchMenu.tsx`: Links zu Highlights und zum ganzen Spiel, Play-Knopf mit Menü
