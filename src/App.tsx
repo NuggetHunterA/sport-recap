@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { GameCard, Hero, Icon, NoGameCard, Skeletons, UpcomingCard } from './components';
-import { favoriteOf, loadFavorites, saveFavorites } from './favorites';
+import { loadFavorites, saveFavorites } from './favorites';
 import type { Favorite } from './favorites';
-import { TIER_TITLES, addDays, berlinToday, formatDay, formatTime, loadNight, loadUpcoming, prioritize } from './nights';
+import { TIER_TITLES, addDays, arrangeNight, berlinToday, formatDay, formatTime, loadNight, loadUpcoming, prioritize } from './nights';
 import type { Night, Tier } from './nights';
 import { TeamsView } from './TeamsView';
 import { StandingsView } from './StandingsView';
@@ -10,10 +10,9 @@ import { BoxSheet, canShowBox } from './BoxSheet';
 import { PullToRefresh, Refresh, useLoad } from './refresh';
 import type { RatedGame } from './nights';
 import type { Game } from './types';
-import type { League } from './types';
+import type { LeagueFilter as Filter } from './types';
 import { LEAGUES } from './types';
 
-type Filter = 'Alle' | League;
 type Tab = 'night' | 'tonight' | 'standings' | 'teams';
 
 const REVEALED_KEY = 'revealed:v1';
@@ -128,34 +127,7 @@ function NightView(props: {
   // Tipp auf „Sehenswert“ blendet alle übrigen Spiele aus
   const [hotOnly, setHotOnly] = useState(false);
 
-  const view = useMemo(() => {
-    const all = data?.games ?? [];
-    const shown = all.filter((g) => filter === 'Alle' || g.game.league === filter);
-    // Meiste Balken zuerst, bei Gleichstand Playoffs und höherer Spannungswert
-    const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => b.rating.level - a.rating.level || a.rating.sortKey - b.rating.sortKey);
-    const isFav = (g: { game: Game }) => favoriteOf(g.game, favorites) !== null;
-    // Ohne Ligafilter stellt die NFL nur mit Lieblingsteam einen Top-Tipp und nie das Spiel der Nacht
-    const eligible = (g: RatedGame) => filter !== 'Alle' || g.game.league !== 'NFL' || isFav(g);
-    // Das spannendste sehenswerte Spiel, egal wie viele Balken
-    const hero = hotSorted.filter((g) => filter !== 'Alle' || g.game.league !== 'NFL').sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
-    const favs = favorites
-      .filter((f) => filter === 'Alle' || f.league === filter)
-      .map((f) => ({ fav: f, item: shown.find((g) => favoriteOf(g.game, [f])) }))
-      .filter(({ item }) => !hotOnly || item?.rating.hot);
-    // Höchstens 2 Top-Tipps, 3 wenn das Spiel der Nacht von einem Lieblingsteam ist; der Rest kommt zu „Weitere Spiele“
-    const others = hotSorted.filter((g) => !isFav(g) && g !== hero);
-    const limit = hero && isFav(hero) ? 3 : 2;
-    const tips = others.filter(eligible).slice(0, limit);
-    const rest = [...others.filter((g) => !tips.includes(g)), ...(hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot))];
-    // Kennzahlen folgen dem Ligafilter
-    return {
-      hero, favs, tips, rest,
-      played: shown.length,
-      hot: hotSorted.length,
-      // Nur die Anzahl, ohne Teams oder Stand
-      pending: (data?.pending ?? []).filter((l) => filter === 'Alle' || l === filter).length,
-    };
-  }, [data, filter, favorites, hotOnly]);
+  const view = useMemo(() => arrangeNight(data ?? { games: [] }, favorites, filter, hotOnly), [data, filter, favorites, hotOnly]);
 
   const isToday = date === today;
   return (
