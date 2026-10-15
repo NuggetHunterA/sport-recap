@@ -13,7 +13,7 @@ const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const MINUTE = 60 * 1000;
-const memory = new Map<string, { at: number; data: Promise<any> }>();
+const memory = new Map<string, { at: number; ttl: number; data: Promise<any> }>();
 
 /** Holt JSON und merkt es sich `ttl` lang, damit Tabwechsel ESPN nicht erneut abfragen. */
 export async function getJson(url: string, ttl = 5 * MINUTE): Promise<any> {
@@ -23,9 +23,14 @@ export async function getJson(url: string, ttl = 5 * MINUTE): Promise<any> {
     if (!res.ok) throw new Error(`ESPN ${res.status}`);
     return res.json();
   });
-  memory.set(url, { at: Date.now(), data });
+  memory.set(url, { at: Date.now(), ttl, data });
   data.catch(() => memory.delete(url));
   return data;
+}
+
+/** Vergisst alles, was sich noch ändern kann (Spielpläne, Tabellen); Daten fertiger Spiele bleiben. */
+export function forgetFresh(maxTtl = 60 * MINUTE): void {
+  for (const [url, hit] of memory) if (hit.ttl <= maxTtl) memory.delete(url);
 }
 
 function team(c: any): Team {

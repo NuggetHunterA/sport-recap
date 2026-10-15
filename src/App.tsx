@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { GameCard, Hero, Icon, NoGameCard, Skeletons, UpcomingCard } from './components';
 import { favoriteOf, loadFavorites, saveFavorites } from './favorites';
 import type { Favorite } from './favorites';
@@ -7,6 +7,8 @@ import type { Night, Tier } from './nights';
 import { TeamsView } from './TeamsView';
 import { StandingsView } from './StandingsView';
 import { BoxSheet, canShowBox } from './BoxSheet';
+import { forgetFresh } from './espn';
+import { PullToRefresh, Refresh, useLoad } from './refresh';
 import type { RatedGame } from './nights';
 import type { Game } from './types';
 import type { League } from './types';
@@ -26,10 +28,42 @@ function readRevealed(): Set<string> {
 }
 
 export function App() {
-  const today = berlinToday();
+  const [today, setToday] = useState(berlinToday);
   // ?tab=tonight öffnet „Heute Abend“ (Link aus der Nachmittags-Benachrichtigung)
   const [tab, setTab] = useState<Tab>(new URLSearchParams(location.search).get('tab') === 'tonight' ? 'tonight' : 'night');
   const [date, setDate] = useState(today);
+  // Jede Erhöhung lädt die sichtbare Ansicht neu
+  const [stamp, setStamp] = useState(0);
+  const [pulling, setPulling] = useState(false);
+  const settled = useCallback(() => setPulling(false), []);
+
+  // Zurück in der App: Datum neu bestimmen. Wer auf der aktuellen Nacht stand, springt zur neuen,
+  // ein bewusst geöffnetes Archiv bleibt stehen.
+  const current = useRef({ today, date });
+  current.current = { today, date };
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const next = berlinToday();
+      if (current.current.date === current.current.today) setDate(next);
+      setToday(next);
+      setStamp((n) => n + 1);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
+  const onPull = useCallback(() => {
+    forgetFresh();
+    setPulling(true);
+    setStamp((n) => n + 1);
+  }, []);
+  // „Meine Teams“ lädt nichts nach; dort und falls etwas hängt, endet die Anzeige von selbst
+  useEffect(() => {
+    if (!pulling) return;
+    const t = setTimeout(() => setPulling(false), tab === 'teams' ? 600 : 15000);
+    return () => clearTimeout(t);
+  }, [pulling, tab]);
   const [filter, setFilter] = useState<Filter>('Alle');
   const [revealed, setRevealed] = useState(readRevealed);
   const [favorites, setFavorites] = useState(loadFavorites);
@@ -46,6 +80,8 @@ export function App() {
   };
 
   return (
+    <Refresh.Provider value={{ stamp, settled }}>
+    <PullToRefresh onPull={onPull} busy={pulling}>
     <div class="app">
       <div class="glow" aria-hidden="true" />
       {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} />}
@@ -59,6 +95,8 @@ export function App() {
         <button type="button" aria-current={tab === 'teams' ? 'page' : undefined} onClick={() => setTab('teams')}>{Icon.star} Meine Teams</button>
       </nav>
     </div>
+    </PullToRefresh>
+    </Refresh.Provider>
   );
 }
 
@@ -70,20 +108,6 @@ export function FilterBar({ filter, setFilter }: { filter: Filter; setFilter: (f
       ))}
     </div>
   );
-}
-
-function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
-  const [state, setState] = useState<{ data?: T; error?: string; loading: boolean }>({ loading: true });
-  useEffect(() => {
-    let alive = true;
-    setState({ loading: true });
-    load().then(
-      (data) => alive && setState({ data, loading: false }),
-      (e) => alive && setState({ error: String(e?.message ?? e), loading: false }),
-    );
-    return () => { alive = false; };
-  }, deps);
-  return state;
 }
 
 function NightView(props: {
@@ -129,6 +153,8 @@ function NightView(props: {
       hero, favs, tips, rest,
       played: shown.length,
       hot: hotSorted.length,
+      // Nur die Anzahl, ohne Teams oder Stand
+      pending: (data?.pending ?? []).filter((l) => filter === 'Alle' || l === filter).length,
     };
   }, [data, filter, favorites, hotOnly]);
 
@@ -160,6 +186,11 @@ function NightView(props: {
         {data && data.failed.length > 0 && <div class="error">Keine Daten für: {data.failed.join(', ')}</div>}
         {data && !loading && (
           <>
+            {view.pending > 0 && (
+              <div class="pending">{Icon.clock} {view.pending === 1
+                ? 'Ein Spiel läuft noch und erscheint, sobald es beendet ist.'
+                : `${view.pending} Spiele laufen noch und erscheinen, sobald sie beendet sind.`}</div>
+            )}
             {view.hero && <Hero {...card(view.hero)} />}
             {view.favs.length > 0 && (
               <section class="section">
@@ -184,7 +215,7 @@ function NightView(props: {
                   : <button type="button" class="more" onClick={() => setShowRest(true)}>{view.rest.length} weitere Spiele anzeigen</button>}
               </section>
             )}
-            {view.played === 0 && <div class="empty">{data.games.length ? 'In dieser Liga gab es keine Spiele.' : 'In dieser Nacht gab es keine Spiele.'}</div>}
+            {view.played === 0 && view.pending === 0 && <div class="empty">{data.games.length ? 'In dieser Liga gab es keine Spiele.' : 'In dieser Nacht gab es keine Spiele.'}</div>}
             {hotOnly && view.played > 0 && view.hot === 0 && <div class="empty">Keine sehenswerten Spiele in dieser Nacht.</div>}
           </>
         )}
