@@ -24,5 +24,13 @@ if (mode === 'morning') {
 console.log(mode ?? `Nichts zu tun (${hour} Uhr in Berlin)`, message);
 if (message) {
   webpush.setVapidDetails(url, config.publicKey, config.privateKey);
-  await webpush.sendNotification(config.subscription, JSON.stringify(message), { TTL: 6 * 3600 });
+  try {
+    await webpush.sendNotification(config.subscription, JSON.stringify(message), { TTL: 6 * 3600 });
+  } catch (e) {
+    // 404/410: Das Gerät ist beim Push-Dienst abgemeldet (z. B. App neu installiert oder Benachrichtigungen aus)
+    if (!(e instanceof webpush.WebPushError) || (e.statusCode !== 404 && e.statusCode !== 410)) throw e;
+    console.error(`::error title=Gerät abgemeldet::Der Push-Dienst kennt dieses Gerät nicht mehr (${e.statusCode}). `
+      + 'In der App unter „Meine Teams“ → „Benachrichtigungen“ neu einrichten und den Code als Secret PUSH_CONFIG ersetzen.');
+    process.exit(1);
+  }
 }
