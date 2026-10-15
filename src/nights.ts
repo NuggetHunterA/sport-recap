@@ -4,7 +4,7 @@ import { scoreboards, withHalves, withPlays } from './espn';
 import { favoriteOf } from './favorites';
 import type { Favorite } from './favorites';
 import { bothStrong, isRivalry, rate } from './rating';
-import type { Game, Rating } from './types';
+import type { Game, League, Rating } from './types';
 
 const TZ = 'Europe/Berlin';
 
@@ -43,9 +43,26 @@ export interface Night {
   date: string;
   games: RatedGame[];
   failed: string[];
+  /** Ligen der Spiele im Zeitfenster, die noch laufen oder sich verzögern (ein Eintrag je Spiel) */
+  pending?: League[];
 }
 
-const cacheKey = (date: string) => `night:v8:${date}`;
+const CACHE_PREFIX = 'night:v8:';
+const cacheKey = (date: string) => `${CACHE_PREFIX}${date}`;
+const KEEP_NIGHTS = 14;
+
+/**
+ * Räumt gespeicherte Nächte auf: Einträge älterer Versionen fliegen raus,
+ * von der aktuellen Version bleiben nur die letzten `keep` Nächte.
+ */
+export function pruneNights(storage: Storage = localStorage, keep = KEEP_NIGHTS): void {
+  try {
+    const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter((k): k is string => !!k?.startsWith('night:'));
+    const current = keys.filter((k) => k.startsWith(CACHE_PREFIX)).sort().reverse();
+    const drop = [...keys.filter((k) => !k.startsWith(CACHE_PREFIX)), ...current.slice(keep)];
+    drop.forEach((k) => storage.removeItem(k));
+  } catch { /* kein Speicher verfügbar */ }
+}
 
 /**
  * Beendete Spiele der Nacht vor `date`: Start zwischen Vortag 12:00 und `date` 12:00 Berliner Zeit.
@@ -73,6 +90,7 @@ export async function loadNight(date: string, now = new Date()): Promise<Night> 
     date,
     games: finished.map((game) => ({ game, rating: rate(game) })),
     failed,
+    pending: inWindow.filter((g) => g.state !== 'post').map((g) => g.league),
   };
 
   // Abgeschlossene Nächte ändern sich nicht mehr

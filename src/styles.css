@@ -14,6 +14,7 @@
 }
 
 * { box-sizing: border-box; }
+html, body { overscroll-behavior-y: contain; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; cursor: pointer; }
 img { display: block; }
@@ -127,6 +128,14 @@ button.big-score { color: inherit; padding: 0; cursor: pointer; }
 .more { min-height: 44px; border-radius: 14px; border: 1px dashed rgba(70,45,25,.15); background: transparent; color: var(--muted); font-size: 14px; }
 .empty, .error { padding: 28px 18px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: var(--muted); text-align: center; line-height: 1.5; }
 .error { color: #b3412a; }
+.pending { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 13px; line-height: 1.4; }
+.pending svg { flex: none; width: 16px; height: 16px; }
+
+/* Herunterziehen zum Aktualisieren */
+.pull { position: fixed; top: calc(env(safe-area-inset-top) - 36px); left: 50%; z-index: 30; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--card); border: 1px solid var(--line); color: var(--accent); box-shadow: 0 6px 18px rgba(70, 45, 25, .15); pointer-events: none; transition: transform .2s ease, opacity .2s ease; }
+.pull span { display: grid; }
+.pull.busy span { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg) } }
 .skeleton { height: 92px; border-radius: 18px; background: linear-gradient(90deg, #f6efe4, #ece2d3, #f6efe4); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0 } }
 

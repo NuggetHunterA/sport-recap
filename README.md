@@ -9,7 +9,7 @@ Hervorgegangen aus einer Home-Assistant-Automation.
 - **Meine Teams:** alle Teams aus MLB, NBA und NFL. Ein Tipp auf den Stern macht ein Team zum Lieblingsteam. Lieblingsteams stehen in den anderen Tabs immer ganz oben. Die Auswahl wird im Browser des Geräts gespeichert und lässt sich auf die Standardteams zurücksetzen.
 - **Benachrichtigungen:** morgens um 8 Uhr die Spiele der Lieblingsteams mit Balken und ein Top-Tipp ohne Lieblingsteam und ohne NFL, nachmittags um 15 Uhr nur, wenn ein Lieblingsteam oder ein Top-Matchup (ohne NFL) vor 23 Uhr startet. Nie mit Ergebnis. Gesendet wird vom Workflow `.github/workflows/notify.yml` (Skript `scripts/notify.ts`, Texte in `src/notify.ts`). Einrichten: in „Meine Teams“ auf „Benachrichtigungen einrichten“ tippen und den kopierten Code im Repo unter Settings → Secrets and variables → Actions als Secret `PUSH_CONFIG` speichern. Nach Änderungen an den Lieblingsteams den Code neu kopieren. GitHub startet geplante Läufe teils mit Verspätung.
 
-Daten kommen direkt im Browser von der inoffiziellen ESPN-API. Spielpläne werden höchstens alle 5 Minuten neu geladen, Spielverläufe beendeter Spiele einmal am Tag.
+Daten kommen direkt im Browser von der inoffiziellen ESPN-API. Spielpläne werden höchstens alle 5 Minuten neu geladen, Spielverläufe beendeter Spiele einmal am Tag. Beim Zurückkehren in die App wird neu geladen (stand man auf der aktuellen Nacht, springt die Ansicht auf die neue; ein geöffnetes Archiv bleibt stehen), Herunterziehen am Seitenanfang lädt ebenfalls neu, mit demselben 5-Minuten-Zwischenspeicher. Spiele, die beim Laden noch laufen, fehlen in „Letzte Nacht“; ein Hinweis nennt nur ihre Anzahl. Fertige Nächte werden im Browser gespeichert, höchstens die letzten 14.
 
 ## Wo was steht
 

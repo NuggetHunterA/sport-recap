@@ -1,8 +1,9 @@
 import { Fragment } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { Icon, Skeletons } from './components';
 import { matches } from './favorites';
 import type { Favorite } from './favorites';
+import { useLoad } from './refresh';
 import { loadStandings } from './standings';
 import type { LeagueStandings, Standing, Table } from './standings';
 import type { League } from './types';
@@ -20,16 +21,7 @@ export function StandingsView({ favorites }: { favorites: Favorite[] }) {
   const [league, setLeague] = useState<League>('MLB');
   // Bei jedem Öffnen des Tabs wieder verdeckt: der Zustand lebt nur, solange der Tab offen ist
   const [revealed, setRevealed] = useState<Set<League>>(new Set());
-  const [state, setState] = useState<{ data?: LeagueStandings; error?: string; loading: boolean }>({ loading: true });
-  useEffect(() => {
-    let alive = true;
-    setState({ loading: true });
-    loadStandings(league).then(
-      (data) => alive && setState({ data, loading: false }),
-      (e) => alive && setState({ error: String(e?.message ?? e), loading: false }),
-    );
-    return () => { alive = false; };
-  }, [league]);
+  const { data, error, loading } = useLoad<LeagueStandings>(() => loadStandings(league), [league]);
 
   const open = revealed.has(league);
   const toggle = () => {
@@ -37,7 +29,6 @@ export function StandingsView({ favorites }: { favorites: Favorite[] }) {
     open ? next.delete(league) : next.add(league);
     setRevealed(next);
   };
-  const { data, error, loading } = state;
   const clinches = new Set(data?.tables.flatMap((t) => t.rows.map((r) => r.clinch)).filter(Boolean));
 
   return (
