@@ -82,7 +82,7 @@ export function TeamsView({ favorites, setFavorites }: { favorites: Favorite[]; 
         <button type="button" class="more" onClick={() => setFavorites(FAVORITES)}>Auf meine ursprünglichen Teams zurücksetzen</button>
         <section class="section">
           <div class="section-head"><h2>Benachrichtigungen</h2></div>
-          <p class="lead">Morgens um 8 Uhr deine Teams und ein Top-Tipp, nachmittags um 15 Uhr nur, wenn vor 23 Uhr etwas Wichtiges startet. Nie mit Ergebnis. Nach dem Einrichten den kopierten Code auf GitHub unter Settings → Secrets and variables → Actions als Secret <b>PUSH_CONFIG</b> speichern. Ändern sich deine Teams, den Code neu kopieren.</p>
+          <p class="lead">Morgens um 8 Uhr deine Teams und ein Top-Tipp, nachmittags um 15 Uhr nur, wenn vor 23 Uhr etwas Wichtiges startet. Nie mit Ergebnis. Nach dem Einrichten den kopierten Code auf GitHub unter Settings → Secrets and variables → Actions als Secret <b>PUSH_CONFIG</b> speichern. Ändern sich deine Teams oder installierst du die App neu, den Code neu kopieren.</p>
           <button type="button" class="more" onClick={setup}>{push.code ? 'Code kopiert' : 'Benachrichtigungen einrichten'}</button>
           {push.code && <textarea class="push-code" readOnly value={push.code} onFocus={(e) => e.currentTarget.select()} />}
           {push.error && <div class="error">{push.error}</div>}
