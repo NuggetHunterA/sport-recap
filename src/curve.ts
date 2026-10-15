@@ -1,26 +1,24 @@
 // Spannungskurve: bewertet, wie lange und wie spät ein Spiel offen war.
-import type { Game, League } from './types';
+import { isRated } from './types';
+import type { Game, RatedLeague } from './types';
 
 /** Streuung des Endabstands über ein ganzes Spiel (Runs bzw. Punkte), gemessen an Okt. 2025 bis Sep. 2026. */
-const SIGMA: Record<League, number> = { MLB: 4.6, NBA: 16.4, NFL: 13.8 };
-/** Was auch kurz vor Schluss noch aufholbar ist: MLB gut ein Run, NBA ein bis zwei Würfe, NFL ein Touchdown. */
-const LATE: Record<League, number> = { MLB: 1.2, NBA: 5, NFL: 7 };
-/** Regulär: MLB 18 Halbinnings, NBA 48 Minuten, NFL 60 Minuten (in Sekunden). */
-const REG: Record<League, number> = { MLB: 18, NBA: 2880, NFL: 3600 };
-const PERIOD: Record<'NBA' | 'NFL', { len: number; ot: number; count: number }> = {
-  NBA: { len: 720, ot: 300, count: 4 },
-  NFL: { len: 900, ot: 600, count: 4 },
-};
+const SIGMA: Record<RatedLeague, number> = { MLB: 4.6, NBA: 16.4 };
+/** Was auch kurz vor Schluss noch aufholbar ist: MLB gut ein Run, NBA ein bis zwei Würfe. */
+const LATE: Record<RatedLeague, number> = { MLB: 1.2, NBA: 5 };
+/** NBA: vier Viertel à 12 Minuten, Verlängerung 5 Minuten (in Sekunden). */
+const PERIOD = { len: 720, ot: 300, count: 4 };
+const REG = PERIOD.len * PERIOD.count;
 /** Ab diesem Spielfortschritt beginnt die Schlussphase (MLB: 8. Inning). */
 const FINAL_FROM = 0.77;
 /** Aufgeholter Rückstand, ab dem der Baustein Aufholjagd voll zählt. */
-const COMEBACK_FULL: Record<League, number> = { MLB: 4, NBA: 15, NFL: 17 };
-/** Ab hier zählen die letzten Minuten extra (NBA gut 2,5 Min., NFL gut 3,5 Min., MLB Bottom 9). */
+const COMEBACK_FULL: Record<RatedLeague, number> = { MLB: 4, NBA: 15 };
+/** Ab hier zählen die letzten Minuten extra (NBA gut 2,5 Min., MLB Bottom 9). */
 const LAST_FROM = 0.94;
-/** Ab hier zählt ein Gleichstand als halbe Wendung (MLB ab dem 9. Inning, NBA letzte gut 5 Min., NFL letzte knapp 7 Min.). */
+/** Ab hier zählt ein Gleichstand als halbe Wendung (MLB ab dem 9. Inning, NBA letzte gut 5 Min.). */
 const TIE_FROM = 0.88;
 /** Gewichtete Wendungen, ab denen der Anteil voll ist. */
-const TURN_CAP: Record<League, number> = { MLB: 2, NBA: 5, NFL: 3 };
+const TURN_CAP: Record<RatedLeague, number> = { MLB: 2, NBA: 5 };
 
 export interface State {
   /** Spielfortschritt, 1 = Ende der regulären Spielzeit */
@@ -49,7 +47,7 @@ function phi(x: number): number {
 }
 
 /** Offenheit 0 bis 1: 1 bei Gleichstand, sinkt mit dem Abstand im Verhältnis zur Restzeit. */
-export function openness(league: League, effective: number, r: number): number {
+export function openness(league: RatedLeague, effective: number, r: number): number {
   if (effective <= 0) return 1;
   return 2 * (1 - phi(effective / (SIGMA[league] * Math.sqrt(Math.max(r, 0)) + LATE[league])));
 }
@@ -78,9 +76,9 @@ function mlbStates(game: Game): State[] {
   return out;
 }
 
-/** NBA/NFL: Stand alle 30 Sekunden aus den Scoring-Plays. */
+/** NBA: Stand alle 30 Sekunden aus den Scoring-Plays. */
 function clockStates(game: Game): State[] {
-  const p = PERIOD[game.league as 'NBA' | 'NFL'];
+  const p = PERIOD;
   // Ohne Spielverlauf gibt es keine Kurve
   if (!game.plays?.length) return [];
   const len = (n: number) => (n <= p.count ? p.len : p.ot);
@@ -92,7 +90,7 @@ function clockStates(game: Game): State[] {
   })).sort((a, b) => a.at - b.at);
   const last = Math.max(p.count, ...plays.map((x) => x.period));
   const end = start(last) + len(last);
-  const reg = REG[game.league];
+  const reg = REG;
   const out: State[] = [];
   let i = 0;
   let margin = 0;
@@ -107,14 +105,17 @@ function clockStates(game: Game): State[] {
 }
 
 export function states(game: Game): State[] {
-  return game.league === 'MLB' ? mlbStates(game) : clockStates(game);
+  if (game.league === 'MLB') return mlbStates(game);
+  return game.league === 'NBA' ? clockStates(game) : [];
 }
 
-/** Kennzahlen der Kurve und Punktzahl 0 bis 100 (ohne Kontext). */
+/** Kennzahlen der Kurve und Punktzahl 0 bis 100 (ohne Kontext), nur für bewertete Ligen. */
 export function curve(game: Game): Curve | null {
+  const league = game.league;
+  if (!isRated(league)) return null;
   const all = states(game);
   if (all.length < 4) return null;
-  const o = all.map((s) => openness(game.league, s.effective, s.r));
+  const o = all.map((s) => openness(league, s.effective, s.r));
   // Schlussphase: je später, desto stärker gewichtet
   let fw = 0;
   let fo = 0;
@@ -145,7 +146,7 @@ export function curve(game: Game): Curve | null {
   }
   // Ein Gleichstand ganz am Ende zählt mindestens als halbe Wendung, z. B. ein 0:0 bis ins 9. Inning
   const lateTie = all.some((s) => s.t >= TIE_FROM && s.margin === 0);
-  const turnShare = Math.max(Math.min(1, turns / TURN_CAP[game.league]), lateTie ? 0.5 : 0);
+  const turnShare = Math.max(Math.min(1, turns / TURN_CAP[league]), lateTie ? 0.5 : 0);
   // Aufholjagd: größter Rückstand ab der Halbzeit, der bis in die Schlussphase wieder so weit wettgemacht wurde, dass das Spiel offen war
   let comeback = 0;
   const lead = { [1]: 0, [-1]: 0 } as Record<number, number>;
@@ -156,7 +157,7 @@ export function curve(game: Game): Curve | null {
       if (s.t >= FINAL_FROM && o[i] >= 0.5) comeback = Math.max(comeback, lead[side] - Math.max(side * s.margin, 0));
     }
   });
-  const comebackShare = Math.min(1, comeback / COMEBACK_FULL[game.league]);
+  const comebackShare = Math.min(1, comeback / COMEBACK_FULL[league]);
   return {
     final, course, turns: turnShare, comeback: comebackShare,
     // Wendungen oder Aufholjagd, je nachdem, was das Spiel mehr geprägt hat

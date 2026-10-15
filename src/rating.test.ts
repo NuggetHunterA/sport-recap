@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseEvent, parseHalves, parseLeaders, parsePlays } from './espn';
 import spiele from './fixtures/spiele.json';
 import { addDays, berlinTime, liveLabel, tierOf } from './nights';
-import { LABELS, historicFeats, rate, reason } from './rating';
+import { LABELS, historicFeats, isRivalry, rate as rateOrNull, reason } from './rating';
 import type { Game, League, ScoringPlay } from './types';
 
 function game(league: League, away: [string, number], home: [string, number], plays: ScoringPlay[] = [], extra: Partial<Game> = {}): Game {
@@ -10,6 +10,8 @@ function game(league: League, away: [string, number], home: [string, number], pl
   return { id: '1', league, start: '2026-10-07T00:00:00Z', state: 'post', season: 'regular', away: t(...away), home: t(...home), plays, ...extra };
 }
 const p = (away: number, home: number, period: number, clock?: number, text?: string): ScoringPlay => ({ away, home, period, clock, text });
+/** NBA-Spiel, das bis in die letzte Minute offen war */
+const CLOSE = [p(30, 28, 1, 0), p(50, 52, 2, 0), p(76, 76, 3, 0), p(95, 96, 4, 120), p(101, 101, 4, 40), p(104, 101, 4, 5)];
 
 /** MLB-Spiel aus Runs pro Inning */
 function mlb(away: number[], home: number[], extra: Partial<Game> = {}): Game {
@@ -17,13 +19,14 @@ function mlb(away: number[], home: number[], extra: Partial<Game> = {}): Game {
   return game('MLB', ['A', sum(away)], ['B', sum(home)], [], { lines: { away, home }, ...extra });
 }
 const real = (name: keyof typeof spiele) => spiele[name] as unknown as Game;
+/** Bewertung eines MLB- oder NBA-Spiels */
+const rate = (g: Game) => rateOrNull(g)!;
 
 describe('Spannungskurve: echte Spiele der letzten Saison', () => {
   it.each([
     ['Dodgers 5:4 Blue Jays', 5], // World Series Game 7, 11 Innings
     ['Phillies 1:2 Dodgers', 5], // NLDS, 11 Innings
     ['Knicks 105:104 Spurs', 5], // NBA Finals, 14 Punkte Rückstand 6 Minuten vor Schluss aufgeholt
-    ['Packers 27:31 Bears', 4], // NFL Playoffs, drei Viertel klar, dann Aufholjagd
     ['Rangers 7:4 Cardinals', 3], // offen bis ins 9. Inning
     ['Celtics 109:108 76ers', 2], // erst in den letzten Sekunden eng
     ['Jazz 97:137 Timberwolves', 1],
@@ -60,17 +63,21 @@ describe('Spannungskurve: Regeln', () => {
   it('NBA: klare Führung, die erst am Ende schrumpft (Garbage Time), ist nicht sehenswert', () => {
     expect(rate(game('NBA', ['A', 104], ['B', 98], [p(60, 40, 2, 0), p(100, 80, 4, 200), p(104, 98, 4, 10)])).hot).toBe(false);
   });
-  it('NFL: Blowout ist Stufe 1', () => {
-    expect(rate(game('NFL', ['A', 42], ['B', 10], [p(21, 3, 2), p(42, 10, 4)])).level).toBe(1);
+  it('NFL wird nicht bewertet: keine Balken, kein Label, keine historische Leistung, keine Rivalität', () => {
+    const leaders = [{ stat: 'passingYards', value: 455, name: 'J. Allen' }];
+    const nfl = game('NFL', ['Las Vegas Raiders', 20], ['Kansas City Chiefs', 17], [p(0, 7, 1), p(17, 17, 4, 400), p(20, 17, 4, 120)], { leaders, season: 'playoff' });
+    expect(rateOrNull(nfl)).toBeNull();
+    expect(historicFeats(nfl)).toEqual([]);
+    expect(isRivalry('NFL', 'Las Vegas Raiders', 'Kansas City Chiefs')).toBe(false);
   });
   it('Playoffs, Rivalität und Topduell heben klare Spiele nicht an', () => {
-    const blowout = (extra: Partial<Game>) => rate(game('NFL', ['Kansas City Chiefs', 42], ['Las Vegas Raiders', 10], [p(21, 3, 2), p(42, 10, 4)], extra));
+    const blowout = (extra: Partial<Game>) => rate(game('NBA', ['Los Angeles Lakers', 130], ['Boston Celtics', 90], [p(70, 40, 2, 0), p(130, 90, 4, 0)], extra));
+    expect(blowout({ season: 'playoff' }).rivalry).toBe(true);
     expect(blowout({ season: 'playoff' }).level).toBe(1);
   });
   it('Playoffs geben bei offenen Spielen einen Bonus', () => {
-    const plays = [p(0, 7, 1), p(7, 7, 2), p(14, 10, 3), p(17, 17, 4, 400), p(20, 17, 4, 120)];
-    expect(rate(game('NFL', ['A', 20], ['B', 17], plays, { season: 'playoff' })).score)
-      .toBeGreaterThan(rate(game('NFL', ['A', 20], ['B', 17], plays)).score);
+    expect(rate(game('NBA', ['A', 104], ['B', 101], CLOSE, { season: 'playoff' })).score)
+      .toBeGreaterThan(rate(game('NBA', ['A', 104], ['B', 101], CLOSE)).score);
   });
   it('No-Hitter und 50-Punkte-Spiel heben auf mindestens 3 Balken', () => {
     const nh = mlb([0, 0, 0, 0, 0, 0, 0, 0, 0], [3, 2, 1, 0, 0, 0, 0, 0]);
@@ -80,10 +87,9 @@ describe('Spannungskurve: Regeln', () => {
     expect(rate(game('NBA', ['A', 130], ['B', 100], [p(70, 50, 2, 0), p(130, 100, 4, 0)], { leaders: [{ stat: 'points', value: 52 }] })).level).toBe(3);
   });
   it('historische Leistung zählt zum Kontext, wenn das Spiel ohnehin mindestens 3 Balken hat', () => {
-    const plays = [p(0, 7, 1), p(7, 7, 2), p(14, 10, 3), p(17, 17, 4, 400), p(20, 17, 4, 120)];
-    const leaders = [{ stat: 'passingYards', value: 455, name: 'J. Allen' }];
-    expect(rate(game('NFL', ['A', 20], ['B', 17], plays, { leaders })).score)
-      .toBeGreaterThan(rate(game('NFL', ['A', 20], ['B', 17], plays)).score);
+    const leaders = [{ stat: 'points', value: 52, name: 'L. Dončić' }];
+    expect(rate(game('NBA', ['A', 104], ['B', 101], CLOSE, { leaders })).score)
+      .toBeGreaterThan(rate(game('NBA', ['A', 104], ['B', 101], CLOSE)).score);
   });
   it('nennt die historische Leistung mit Spieler bzw. Team', () => {
     expect(historicFeats(game('NBA', ['A', 130], ['B', 100], [], { leaders: [{ stat: 'points', value: 52, name: 'L. Dončić' }, { stat: 'rebounds', value: 12 }] })))
@@ -155,6 +161,11 @@ describe('ESPN-Daten', () => {
     expect(tierOf(g, [])).toBe('contender');
     expect(tierOf(g, [{ league: 'MLB', match: 'Braves', label: 'Braves' }])).toBe('favorite');
   });
+  it('NFL ist in „Heute Abend“ nur bei Lieblingsteams hervorgehoben, nie Top-Matchup oder Rivalität', () => {
+    const g = game('NFL', ['Las Vegas Raiders', 0], ['Kansas City Chiefs', 0], [], { state: 'pre', season: 'playoff' });
+    expect(tierOf(g, [])).toBe('other');
+    expect(tierOf(g, [{ league: 'NFL', match: 'Chiefs', label: 'Chiefs' }])).toBe('favorite');
+  });
   it('liest Scoring-Plays aus plays und scoringPlays', () => {
     expect(parsePlays({ plays: [{ scoringPlay: false }, { scoringPlay: true, awayScore: 2, homeScore: 0, period: { number: 4 }, clock: { displayValue: '2:31' } }] }))
       .toEqual([{ away: 2, home: 0, period: 4, clock: 151, text: undefined }]);
@@ -208,9 +219,9 @@ describe('Zeitfenster', () => {
   });
 });
 
-describe('NFL-Rivalitäten', () => {
-  it('erkennt Chiefs gegen Raiders unabhängig vom Heimteam', () => {
-    expect(rate(game('NFL', ['Las Vegas Raiders', 20], ['Kansas City Chiefs', 27])).rivalry).toBe(true);
+describe('Rivalitäten', () => {
+  it('erkennt Lakers gegen Celtics unabhängig vom Heimteam', () => {
+    expect(rate(game('NBA', ['Boston Celtics', 100], ['Los Angeles Lakers', 110])).rivalry).toBe(true);
   });
 });
 
@@ -261,7 +272,7 @@ describe('gespeicherte Nächte', () => {
     const store = new Map([['night:v8:2026-10-07', JSON.stringify({ date: '2026-10-07', failed: [], games: [{ game, rating: { level: 5, score: 90 } }] })]]);
     (globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: () => {} };
     const night = await loadNight('2026-10-07');
-    expect(night.games[0].rating.level).toBeLessThanOrEqual(3);
+    expect(night.games[0].rating!.level).toBeLessThanOrEqual(3);
   });
 });
 

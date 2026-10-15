@@ -15,18 +15,24 @@ function game(league: League, away: string, home: string, extra: Partial<Game> =
 }
 const rated = (g: Game, level: number, sortKey = 1000): RatedGame =>
   ({ game: g, rating: { level, hot: level >= 3, sortKey } as Rating });
+/** NFL-Spiel ohne Bewertung */
+const unrated = (g: Game): RatedGame => ({ game: g, rating: null });
 
 describe('Morgens', () => {
-  it('Lieblingsteams zuerst mit Gegner und Balken, dann ein Top-Tipp ohne NFL', () => {
+  it('Lieblingsteams zuerst mit Gegner und Balken, dann ein Top-Tipp; die NFL zählt nicht mit', () => {
     const m = morningMessage([
       rated(game('MLB', 'Milwaukee Brewers', 'San Diego Padres'), 4),
       rated(game('NBA', 'Los Angeles Lakers', 'Golden State Warriors'), 2),
-      rated(game('NFL', 'Kansas City Chiefs', 'Jacksonville Jaguars'), 5),
+      unrated(game('NFL', 'Kansas City Chiefs', 'Jacksonville Jaguars')),
       rated(game('MLB', 'Atlanta Braves', 'Los Angeles Dodgers'), 4),
       rated(game('MLB', 'Boston Red Sox', 'New York Yankees'), 1),
     ], favs, 'u');
-    expect(m.title).toBe('Letzte Nacht · 3 von 5 sehenswert');
+    expect(m.title).toBe('Letzte Nacht · 2 von 4 sehenswert');
     expect(m.body).toBe('Padres – Brewers ▰▰▰▰▱\nLakers – Warriors ▰▰▱▱▱\nTop-Tipp: Braves – Dodgers ▰▰▰▰▱');
+  });
+  it('NFL-Lieblingsteams stehen ohne Balken in der Nachricht', () => {
+    const m = morningMessage([unrated(game('NFL', 'Kansas City Chiefs', 'Jacksonville Jaguars'))], [{ league: 'NFL', match: 'Jaguars', label: 'Jaguars' }], 'u');
+    expect(m.body).toBe('Jaguars – Chiefs\nKein Top-Tipp');
   });
   it('Lieblingsteams ohne Spiel fehlen, ohne sehenswertes Spiel kein Top-Tipp', () => {
     const m = morningMessage([rated(game('NBA', 'Miami Heat', 'Orlando Magic'), 2)], favs, 'u');

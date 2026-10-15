@@ -4,6 +4,7 @@ import { scoreboards, withHalves, withPlays } from './espn';
 import { favoriteOf } from './favorites';
 import type { Favorite } from './favorites';
 import { bothStrong, isRivalry, rate } from './rating';
+import { isRated } from './types';
 import type { Game, League, LeagueFilter, Rating } from './types';
 
 const TZ = 'Europe/Berlin';
@@ -37,7 +38,14 @@ export function formatDay(date: string): string {
   });
 }
 
-export interface RatedGame { game: Game; rating: Rating }
+/** `rating` ist `null` bei NFL-Spielen, die nur angezeigt und nicht bewertet werden. */
+export interface RatedGame { game: Game; rating: Rating | null }
+
+/** Ein bewertetes Spiel, Kandidat für Spiel der Nacht, Top-Tipps und Sehenswert. */
+export type Scored = RatedGame & { rating: Rating };
+
+export const isScored = (g: RatedGame): g is Scored => g.rating !== null;
+const isHot = (g: RatedGame) => g.rating?.hot === true;
 
 export interface Night {
   date: string;
@@ -103,10 +111,11 @@ export async function loadNight(date: string, now = new Date()): Promise<Night> 
 
 export interface ArrangedNight {
   /** Spiel der Nacht */
-  hero: RatedGame | null;
+  hero: Scored | null;
   /** Je Lieblingsteam im Filter sein Spiel, ohne Spiel `item` leer */
   favs: { fav: Favorite; item?: RatedGame }[];
-  tips: RatedGame[];
+  tips: Scored[];
+  /** Erst die übrigen sehenswerten Spiele, dann die nicht sehenswerten und am Ende die unbewerteten NFL-Spiele */
   rest: RatedGame[];
   /** Kennzahlen, folgen dem Ligafilter */
   played: number;
@@ -117,27 +126,27 @@ export interface ArrangedNight {
 
 /**
  * Verteilt die Spiele einer Nacht auf Spiel der Nacht, Meine Teams, Top-Tipps und Weitere Spiele.
- * `hotOnly` (Tipp auf „Sehenswert“) blendet alle nicht sehenswerten Spiele aus.
+ * `hotOnly` (Tipp auf „Sehenswert“) blendet alle nicht sehenswerten Spiele aus, auch die unbewerteten.
+ * NFL-Spiele sind nie Spiel der Nacht, Top-Tipp oder sehenswert.
  */
 export function arrangeNight(night: Pick<Night, 'games' | 'pending'>, favorites: Favorite[], filter: LeagueFilter, hotOnly: boolean): ArrangedNight {
   const inFilter = (league: League) => filter === 'Alle' || league === filter;
   const shown = night.games.filter((g) => inFilter(g.game.league));
   const isFav = (g: RatedGame) => favoriteOf(g.game, favorites) !== null;
-  // Ohne Ligafilter wird die NFL nie Spiel der Nacht oder Top-Tipp
-  const eligible = (g: RatedGame) => filter !== 'Alle' || g.game.league !== 'NFL';
   // Meiste Balken zuerst, bei Gleichstand Playoffs und höherer Spannungswert
-  const hotSorted = shown.filter((g) => g.rating.hot).sort((a, b) => b.rating.level - a.rating.level || a.rating.sortKey - b.rating.sortKey);
+  const hotSorted = shown.filter(isScored).filter(isHot).sort((a, b) => b.rating.level - a.rating.level || a.rating.sortKey - b.rating.sortKey);
   // Das spannendste sehenswerte Spiel, egal wie viele Balken; auch von einem Lieblingsteam
-  const hero = hotSorted.filter(eligible).sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
+  const hero = [...hotSorted].sort((a, b) => b.rating.score - a.rating.score || a.rating.sortKey - b.rating.sortKey)[0] ?? null;
   // Das Spiel der Nacht steht bei einem Lieblingsteam zusätzlich unter „Meine Teams“
   const favs = favorites
     .filter((f) => inFilter(f.league))
     .map((fav) => ({ fav, item: shown.find((g) => favoriteOf(g.game, [fav])) }))
-    .filter(({ item }) => !hotOnly || item?.rating.hot);
+    .filter(({ item }) => !hotOnly || (item && isHot(item)));
   // Höchstens 2 Top-Tipps, 3 wenn das Spiel der Nacht von einem Lieblingsteam ist; der Rest kommt zu „Weitere Spiele“
   const others = hotSorted.filter((g) => !isFav(g) && g !== hero);
-  const tips = others.filter(eligible).slice(0, hero && isFav(hero) ? 3 : 2);
-  const rest = [...others.filter((g) => !tips.includes(g)), ...(hotOnly ? [] : shown.filter((g) => !isFav(g) && !g.rating.hot))];
+  const tips = others.slice(0, hero && isFav(hero) ? 3 : 2);
+  const cold = shown.filter((g) => !isFav(g) && !isHot(g));
+  const rest = [...others.filter((g) => !tips.includes(g)), ...(hotOnly ? [] : [...cold.filter(isScored), ...cold.filter((g) => !isScored(g))])];
   return {
     hero, favs, tips, rest,
     played: shown.length,
@@ -159,8 +168,10 @@ function isContenderMatchup(game: Game): boolean {
   return game.season === 'playoff' || bothStrong(game);
 }
 
+/** NFL-Spiele sind nur bei Lieblingsteams hervorgehoben, sonst „Weitere Spiele“. */
 export function tierOf(game: Game, favs: Favorite[]): Tier {
   if (favoriteOf(game, favs)) return 'favorite';
+  if (!isRated(game.league)) return 'other';
   if (isContenderMatchup(game)) return 'contender';
   if (isRivalry(game.league, game.away.name, game.home.name)) return 'rivalry';
   return 'other';

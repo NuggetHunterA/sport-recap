@@ -1,7 +1,7 @@
 import { useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { formatTime, liveLabel } from './nights';
-import type { RatedGame, Tier, Upcoming } from './nights';
+import type { RatedGame, Scored, Tier, Upcoming } from './nights';
 import type { Game, Team } from './types';
 import type { Favorite } from './favorites';
 import { historicFeats } from './rating';
@@ -104,7 +104,7 @@ function label(game: Game): string {
   return game.season === 'preseason' ? 'Preseason' : game.season === 'playoff' ? 'Playoffs' : 'Regular Season';
 }
 
-export function Hero({ item, open, toggle, onBox }: CardProps) {
+export function Hero({ item, open, toggle, onBox }: CardProps & { item: Scored }) {
   const { game, rating } = item;
   // Trikotfarben: Hauptfarbe und Zweitfarbe je Team
   const colors = (t: Team) => ({ '--c': t.color, '--c2': t.alt ?? '#ffffff' });
@@ -155,14 +155,15 @@ function Shell({ away, home, hot, children, onClick }: { away: string; home: str
   );
 }
 
+/** Karte eines Spiels; NFL-Spiele ohne Bewertung zeigen weder Balken noch Label. */
 export function GameCard({ item, open, toggle, onBox }: CardProps) {
   const { game, rating } = item;
   return (
-    <Shell away={game.away.color} home={game.home.color} hot={rating.hot} onClick={open ? openBox(onBox) : undefined}>
+    <Shell away={game.away.color} home={game.home.color} hot={rating?.hot ?? false} onClick={open ? openBox(onBox) : undefined}>
       <div class="card-top">
         <div class="meta"><span class="league">{game.league}</span><span>{label(game)}</span></div>
         <span class="top-right">
-          <Meter level={rating.level} />
+          {rating && <Meter level={rating.level} />}
           {canWatch(game) && <WatchButton game={game} />}
         </span>
       </div>
@@ -170,7 +171,7 @@ export function GameCard({ item, open, toggle, onBox }: CardProps) {
         <div class="badges"><Badge team={game.away} size={40} /><Badge team={game.home} size={40} /></div>
         <div class="matchup">
           <b>{game.away.short} @ {game.home.short}</b>
-          <small class={rating.level >= 4 ? 'hot' : ''}>{rating.reason}</small>
+          {rating && <small class={rating.level >= 4 ? 'hot' : ''}>{rating.reason}</small>}
         </div>
         <button type="button" class={`score-btn${open ? ' open' : ''}`} onClick={toggle}
           aria-label={open ? 'Ergebnis verbergen' : 'Ergebnis aufdecken'}>

@@ -96,7 +96,7 @@ function clockSeconds(clock: any): number | undefined {
   return s ? Math.floor(parseFloat(s[1])) : undefined;
 }
 
-/** Scoring-Plays aus der Spielzusammenfassung (MLB/NBA: plays, NFL: scoringPlays). */
+/** Scoring-Plays aus der Spielzusammenfassung (plays, sonst scoringPlays). */
 export function parsePlays(summary: any): ScoringPlay[] {
   const all: any[] = Array.isArray(summary?.plays) && summary.plays.length
     ? summary.plays.filter((p: any) => p?.scoringPlay)
@@ -126,6 +126,8 @@ export function summary(game: Pick<Game, 'league' | 'id'>): Promise<any> {
 }
 
 export async function withPlays(game: Game): Promise<Game> {
+  // Der Spielverlauf dient nur der Bewertung, die NFL wird nicht bewertet
+  if (game.league === 'NFL') return game;
   try {
     const s = await summary(game);
     return { ...game, plays: parsePlays(s) };

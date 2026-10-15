@@ -3,18 +3,20 @@
 // Kern ist die Spannungskurve (curve.ts): wie lange und wie spät das Spiel offen war.
 // Playoffs, Rivalität und Duelle starker Teams geben einen kleinen Bonus, besondere
 // Leistungen eine Untergrenze. Die Stufen kommen aus festen Grenzen je Liga.
+// Bewertet werden nur MLB und NBA; NFL-Spiele bleiben ohne Bewertung.
 import { CONTENDER_MIN_GAMES, CONTENDER_WIN_PCT, RIVALRIES } from './config';
 import { curve, openness } from './curve';
-import type { Game, League, Rating } from './types';
+import { isRated } from './types';
+import type { Game, League, Rating, RatedLeague } from './types';
 
 /** Punktzahl, ab der Stufe 2, 3, 4 und 5 beginnen, kalibriert an der Saison Okt. 2025 bis Okt. 2026 (etwa 30/28/25/13/4 %). */
-const LIMITS: Record<League, [number, number, number, number]> = {
+const LIMITS: Record<RatedLeague, [number, number, number, number]> = {
   MLB: [33, 62, 83, 94],
   NBA: [23, 59, 80, 88],
-  NFL: [30, 62, 80, 88],
 };
 
 export function isRivalry(league: League, a: string, b: string): boolean {
+  if (!isRated(league)) return false;
   return RIVALRIES[league].some(
     ([x, y]) => (a.includes(x) && b.includes(y)) || (a.includes(y) && b.includes(x)),
   );
@@ -35,10 +37,9 @@ export function bothStrong(game: Game): boolean {
   return a !== null && b !== null && a >= CONTENDER_WIN_PCT && b >= CONTENDER_WIN_PCT;
 }
 
-/** Ab diesen Werten gilt eine Einzelleistung als historisch, mit Bezeichnung für die Anzeige nach dem Aufdecken. */
+/** NBA: ab diesen Werten gilt eine Einzelleistung als historisch, mit Bezeichnung für die Anzeige nach dem Aufdecken. */
 const HISTORIC: Record<string, [number, string]> = {
-  points: [50, 'Punkte'], rebounds: [25, 'Rebounds'], assists: [20, 'Assists'], // NBA
-  passingYards: [450, 'Passing Yards'], rushingYards: [200, 'Rushing Yards'], receivingYards: [200, 'Receiving Yards'], // NFL
+  points: [50, 'Punkte'], rebounds: [25, 'Rebounds'], assists: [20, 'Assists'],
 };
 
 /** MLB-Einzelleistungen aus dem Boxscore (Pitcher-Strikeouts, Home Runs, RBI, Hits eines Batters). */
@@ -54,6 +55,7 @@ export interface Feat {
 /** No-Hitter und herausragende Einzelleistungen. Nur nach dem Aufdecken zeigen, die Namen verraten ein Team. */
 export function historicFeats(game: Game): Feat[] {
   const out: Feat[] = [];
+  if (!isRated(game.league)) return out;
   if (game.league === 'MLB') {
     // Ein No-Hitter gehört dem Team, das keinen Hit zugelassen hat
     if (game.away.hits === 0) out.push({ label: 'No-Hitter', name: game.home.short });
@@ -88,15 +90,18 @@ function normalize(raw: number, t: number[]): number {
   return to[i] + (to[i + 1] - to[i]) * (raw - from[i]) / (from[i + 1] - from[i]);
 }
 
-export function rate(game: Game): Rating {
-  const t = LIMITS[game.league];
+/** Bewertung eines beendeten Spiels; `null` für die NFL, die nicht bewertet wird. */
+export function rate(game: Game): Rating | null {
+  const league = game.league;
+  if (!isRated(league)) return null;
+  const t = LIMITS[league];
   const rivalry = isRivalry(game.league, game.away.name, game.home.name);
   const playoff = game.season === 'playoff';
   const strong = bothStrong(game);
   const historic = isHistoric(game);
 
   // Ohne Spielverlauf zählt nur, wie offen der Endstand gewesen wäre
-  let raw = curve(game)?.score ?? 100 * openness(game.league, Math.abs(game.away.score - game.home.score), 0);
+  let raw = curve(game)?.score ?? 100 * openness(league, Math.abs(game.away.score - game.home.score), 0);
   if (raw >= t[1]) raw += context(playoff, historic, rivalry, strong);
   if (historic) raw = Math.max(raw, t[1]);
 

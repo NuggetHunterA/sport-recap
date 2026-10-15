@@ -1,5 +1,5 @@
 // Persönliche Einstellungen. Übernommen aus den Home-Assistant-Automationen.
-import type { League } from './types';
+import type { League, RatedLeague } from './types';
 
 /** Lieblingsteams: Anzeigename und Suchbegriff im ESPN-Teamnamen. */
 export const FAVORITES: { label: string; match: string; league: League }[] = [
@@ -11,8 +11,8 @@ export const FAVORITES: { label: string; match: string; league: League }[] = [
   { label: 'Lakers', match: 'Lakers', league: 'NBA' },
 ];
 
-/** Rivalitäten als Teamnamen-Paare, egal wer Heimteam ist. */
-export const RIVALRIES: Record<League, [string, string][]> = {
+/** Rivalitäten als Teamnamen-Paare, egal wer Heimteam ist. Nur für bewertete Ligen. */
+export const RIVALRIES: Record<RatedLeague, [string, string][]> = {
   MLB: [
     ['Padres', 'Dodgers'], ['Athletics', 'Giants'], ['Yankees', 'Red Sox'], ['Dodgers', 'Giants'],
     ['Cubs', 'Cardinals'], ['Astros', 'Rangers'], ['Mets', 'Phillies'], ['Cubs', 'White Sox'],
@@ -23,11 +23,6 @@ export const RIVALRIES: Record<League, [string, string][]> = {
     ['Mavericks', 'Spurs'], ['Magic', 'Heat'], ['Knicks', 'Celtics'], ['Celtics', '76ers'],
     ['Knicks', 'Pacers'], ['Celtics', 'Heat'], ['Warriors', 'Cavaliers'], ['Bulls', 'Knicks'],
     ['Lakers', 'Warriors'],
-  ],
-  NFL: [
-    ['Packers', 'Bears'], ['Cowboys', 'Eagles'], ['Steelers', 'Ravens'], ['Cowboys', '49ers'],
-    ['Chiefs', 'Raiders'], ['Giants', 'Eagles'], ['Patriots', 'Jets'], ['Falcons', 'Saints'],
-    ['Chiefs', 'Bills'], ['Patriots', 'Colts'], ['49ers', 'Seahawks'],
   ],
 };
 
