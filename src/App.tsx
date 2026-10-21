@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { GameCard, Hero, Icon, NoGameCard, Skeletons, UpcomingCard } from './components';
+import { FilterBar, GameCard, Hero, Icon, NoGameCard, Skeletons, UpcomingCard } from './components';
 import { loadFavorites, saveFavorites } from './favorites';
 import type { Favorite } from './favorites';
 import { TIER_TITLES, addDays, arrangeNight, berlinToday, formatDay, formatTime, loadNight, loadUpcoming, prioritize } from './nights';
@@ -10,12 +10,11 @@ import { BoxSheet, canShowBox } from './BoxSheet';
 import { PullToRefresh, Refresh, useLoad } from './refresh';
 import type { RatedGame } from './nights';
 import type { Game } from './types';
-import type { LeagueFilter as Filter } from './types';
-import { LEAGUES } from './types';
+import type { League, LeagueFilter as Filter } from './types';
+import { parseRoute, routeSearch, sameRoute } from './route';
+import type { Route, Tab } from './route';
 import type { Session } from '@supabase/supabase-js';
 import { REVEALED_LIMIT, pull, saveFavoritesRemote, saveRevealedRemote, supabase } from './sync';
-
-type Tab = 'night' | 'tonight' | 'standings' | 'teams';
 
 const REVEALED_KEY = 'revealed:v1';
 
@@ -33,24 +32,42 @@ function writeRevealed(ids: Set<string>) {
 
 export function App() {
   const [today, setToday] = useState(berlinToday);
-  // ?tab=tonight öffnet „Heute Abend“ (Link aus der Nachmittags-Benachrichtigung)
-  const [tab, setTab] = useState<Tab>(new URLSearchParams(location.search).get('tab') === 'tonight' ? 'tonight' : 'night');
-  const [date, setDate] = useState(today);
+  // Tab und Datum kommen aus der Adresse, z. B. ?tab=tonight aus der Nachmittags-Benachrichtigung
+  const [route, setRoute] = useState<Route>(() => parseRoute(location.search, today));
+  const { tab } = route;
+  // Ohne Datum in der Adresse gilt immer die aktuelle Nacht, auch nach dem Datumswechsel
+  const date = route.date ?? today;
+  const go = (next: Route) => {
+    if (sameRoute(next, route)) return;
+    history.pushState({ route: true }, '', location.pathname + routeSearch(next, location.search) + location.hash);
+    setRoute(next);
+  };
+  const setTab = (t: Tab) => go({ tab: t, date: t === 'night' ? route.date : null });
+  const setDate = (d: string) => go({ tab: 'night', date: d < today ? d : null });
+  // Zurück aus den Einstellungen: im Verlauf, wenn er aus der App kommt, sonst zu „Letzte Nacht“
+  const leaveSettings = () => history.state?.route ? history.back() : go({ tab: 'night', date: null });
+
+  useEffect(() => {
+    // Adresse vereinheitlichen, z. B. ?tab=teams zu ?tab=settings
+    history.replaceState(history.state, '', location.pathname + routeSearch(parseRoute(location.search, today), location.search) + location.hash);
+    const onPop = () => {
+      const next = parseRoute(location.search, berlinToday());
+      setRoute((r) => sameRoute(r, next) ? r : next);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   // Jede Erhöhung lädt die sichtbare Ansicht neu
   const [stamp, setStamp] = useState(0);
   const [pulling, setPulling] = useState(false);
   const settled = useCallback(() => setPulling(false), []);
 
   // Zurück in der App: Datum neu bestimmen. Wer auf der aktuellen Nacht stand, springt zur neuen,
-  // ein bewusst geöffnetes Archiv bleibt stehen.
-  const current = useRef({ today, date });
-  current.current = { today, date };
+  // ein bewusst geöffnetes Archiv (Datum in der Adresse) bleibt stehen.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
-      const next = berlinToday();
-      if (current.current.date === current.current.today) setDate(next);
-      setToday(next);
+      setToday(berlinToday());
       setStamp((n) => n + 1);
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -62,13 +79,19 @@ export function App() {
     setPulling(true);
     setStamp((n) => n + 1);
   }, []);
-  // „Meine Teams“ lädt nichts nach; dort und falls etwas hängt, endet die Anzeige von selbst
+  // Die Einstellungen laden nichts nach; dort und falls etwas hängt, endet die Anzeige von selbst
   useEffect(() => {
     if (!pulling) return;
-    const t = setTimeout(() => setPulling(false), tab === 'teams' ? 600 : 15000);
+    const t = setTimeout(() => setPulling(false), tab === 'settings' ? 600 : 15000);
     return () => clearTimeout(t);
   }, [pulling, tab]);
-  const [filter, setFilter] = useState<Filter>('Alle');
+  // Ein Ligafilter für alle Tabs. „Tabellen“ kennt kein „Alle“ und zeigt dann die zuletzt gewählte Liga.
+  const [filter, setFilterState] = useState<Filter>('Alle');
+  const [lastLeague, setLastLeague] = useState<League>('MLB');
+  const setFilter = (f: Filter) => {
+    setFilterState(f);
+    if (f !== 'Alle') setLastLeague(f);
+  };
   const [revealed, setRevealed] = useState(readRevealed);
   const [favorites, setFavorites] = useState(loadFavorites);
   const [session, setSession] = useState<Session | null>(null);
@@ -124,27 +147,19 @@ export function App() {
       <div class="glow" aria-hidden="true" />
       {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} />}
       {tab === 'tonight' && <TonightView filter={filter} setFilter={setFilter} favorites={favorites} />}
-      {tab === 'standings' && <StandingsView favorites={favorites} />}
-      {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} session={session} />}
+      {tab === 'standings' && <StandingsView league={filter === 'Alle' ? lastLeague : filter} setLeague={setFilter} favorites={favorites} />}
+      {tab === 'settings' && <TeamsView favorites={favorites} setFavorites={updateFavorites} session={session} filter={filter} setFilter={setFilter} onBack={leaveSettings} />}
+      {tab !== 'settings' && (
+        <button type="button" class="gear" aria-label="Einstellungen" onClick={() => setTab('settings')}>{Icon.gear}</button>
+      )}
       <nav class="nav" aria-label="Hauptmenü">
         <button type="button" aria-current={tab === 'night' ? 'page' : undefined} onClick={() => setTab('night')}>{Icon.moon} Letzte Nacht</button>
         <button type="button" aria-current={tab === 'tonight' ? 'page' : undefined} onClick={() => setTab('tonight')}>{Icon.clock} Heute Abend</button>
         <button type="button" aria-current={tab === 'standings' ? 'page' : undefined} onClick={() => setTab('standings')}>{Icon.standings} Tabellen</button>
-        <button type="button" aria-current={tab === 'teams' ? 'page' : undefined} onClick={() => setTab('teams')}>{Icon.star} Meine Teams</button>
       </nav>
     </div>
     </PullToRefresh>
     </Refresh.Provider>
-  );
-}
-
-export function FilterBar({ filter, setFilter }: { filter: Filter; setFilter: (f: Filter) => void }) {
-  return (
-    <div class="filter" role="group" aria-label="Liga filtern">
-      {(['Alle', ...LEAGUES] as Filter[]).map((f) => (
-        <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>
-      ))}
-    </div>
   );
 }
 
