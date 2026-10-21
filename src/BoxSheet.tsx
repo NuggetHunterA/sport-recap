@@ -37,16 +37,19 @@ function best(table: Table): number[] {
 
 function StatTable({ table, highlight }: { table: Table; highlight: boolean }) {
   const top = best(table);
+  // Zusatzspalten stehen hinten und erscheinen nur auf breiten Bildschirmen
+  const first = table.columns.length - (table.wide ?? 0);
+  const cls = (c: number, hot: boolean) => [c >= first && 'wide', c === first && 'wide-first', hot && 'top'].filter(Boolean).join(' ');
   return (
     <div class="box-scroll">
       <table class="box-table">
-        <thead><tr><th class="name">{table.title}</th>{table.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+        <thead><tr><th class="name">{table.title}</th>{table.columns.map((c, i) => <th key={c} class={cls(i, false)}>{c}</th>)}</tr></thead>
         <tbody>
           {table.rows.map((r, i) => (
             <tr key={i}>
               <th scope="row" class="name">{r.name}{r.note && <small>{r.note}</small>}</th>
               {r.stats.map((v, c) => (
-                <td key={c} class={highlight && c > 0 && top[c] > 0 && parseFloat(v) === top[c] ? 'top' : ''}>{v}</td>
+                <td key={c} class={cls(c, highlight && c > 0 && c < first && top[c] > 0 && parseFloat(v) === top[c])}>{v}</td>
               ))}
             </tr>
           ))}
@@ -56,8 +59,18 @@ function StatTable({ table, highlight }: { table: Table; highlight: boolean }) {
   );
 }
 
-function TeamTables({ team, league }: { team?: TeamBox; league: Game['league'] }) {
-  if (!team || (team.tables.length === 0 && !team.touchdowns)) return <div class="empty">Keine Spielerwerte verfügbar.</div>;
+function TeamTables({ team, league, info, shown }: { team?: TeamBox; league: Game['league']; info: Game['away']; shown: boolean }) {
+  return (
+    <div class={`box-team${shown ? ' shown' : ''}`}>
+      <h3 class="box-team-head"><Badge team={info} size={28} />{info.short}</h3>
+      {!team || (team.tables.length === 0 && !team.touchdowns)
+        ? <div class="empty">Keine Spielerwerte verfügbar.</div>
+        : <TeamDetail team={team} league={league} />}
+    </div>
+  );
+}
+
+function TeamDetail({ team, league }: { team: TeamBox; league: Game['league'] }) {
   return (
     <>
       {team.touchdowns && (
@@ -123,7 +136,11 @@ export function BoxSheet({ game, onClose }: { game: Game; onClose: () => void })
                   <button type="button" aria-pressed={side === 'away'} onClick={() => setSide('away')}>{game.away.short}</button>
                   <button type="button" aria-pressed={side === 'home'} onClick={() => setSide('home')}>{game.home.short}</button>
                 </div>
-                <TeamTables team={side === 'away' ? box.away : box.home} league={game.league} />
+                {/* Schmal: ein Team mit Umschalter; breit: beide Teams nebeneinander */}
+                <div class="box-teams">
+                  <TeamTables team={box.away} league={game.league} info={game.away} shown={side === 'away'} />
+                  <TeamTables team={box.home} league={game.league} info={game.home} shown={side === 'home'} />
+                </div>
               </>
             )}
           </>
