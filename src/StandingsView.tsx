@@ -47,7 +47,7 @@ export function StandingsView({ favorites }: { favorites: Favorite[] }) {
           <button key={l} type="button" aria-pressed={league === l} onClick={() => setLeague(l)}>{l}</button>
         ))}
       </div>
-      <main>
+      <main class="boards">
         {loading && <Skeletons />}
         {error && <div class="error">Die Tabellen konnten nicht geladen werden ({error}).</div>}
         {data && !loading && data.tables.map((t) => (

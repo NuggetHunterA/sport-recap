@@ -10,11 +10,15 @@ interface Column {
   label: string;
   /** Mögliche Bezeichnungen bei ESPN (labels, keys oder names) */
   match: string[];
+  /** Nur auf breiten Bildschirmen; fehlt die Spalte bei ESPN, entfällt sie */
+  wide?: boolean;
 }
 
 export interface Table {
   title: string;
   columns: string[];
+  /** Spalten, die nur auf breiten Bildschirmen erscheinen; sie stehen immer hinter den übrigen */
+  wide?: number;
   rows: { name: string; note?: string; stats: string[] }[];
 }
 
@@ -43,6 +47,13 @@ const NBA: Column[] = [
   { label: 'PTS', match: ['pts', 'points'] },
   { label: 'REB', match: ['reb', 'rebounds', 'totalrebounds'] },
   { label: 'AST', match: ['ast', 'assists'] },
+  { label: 'FG', match: ['fg', 'fieldgoalsmadefieldgoalsattempted'], wide: true },
+  { label: '3PT', match: ['3pt', 'threepointfieldgoalsmadethreepointfieldgoalsattempted'], wide: true },
+  { label: 'FT', match: ['ft', 'freethrowsmadefreethrowsattempted'], wide: true },
+  { label: 'STL', match: ['stl', 'steals'], wide: true },
+  { label: 'BLK', match: ['blk', 'blocks'], wide: true },
+  { label: 'TO', match: ['to', 'turnovers'], wide: true },
+  { label: '+/-', match: ['plusminus', ''], wide: true },
 ];
 
 const BATTING: Column[] = [
@@ -53,6 +64,9 @@ const BATTING: Column[] = [
   { label: 'HR', match: ['hr', 'homeruns'] },
   { label: 'BB', match: ['bb', 'walks'] },
   { label: 'K', match: ['k', 'so', 'strikeouts'] },
+  { label: 'AVG', match: ['avg', 'battingaverage'], wide: true },
+  { label: 'OBP', match: ['obp', 'onbasepct'], wide: true },
+  { label: 'SLG', match: ['slg', 'slugavg'], wide: true },
 ];
 
 const PITCHING: Column[] = [
@@ -62,6 +76,9 @@ const PITCHING: Column[] = [
   { label: 'ER', match: ['er', 'earnedruns'] },
   { label: 'BB', match: ['bb', 'walks'] },
   { label: 'K', match: ['k', 'so', 'strikeouts'] },
+  { label: 'HR', match: ['hr', 'homeruns'], wide: true },
+  { label: 'PC', match: ['pc', 'pitches'], wide: true },
+  { label: 'ERA', match: ['era'], wide: true },
 ];
 
 const PASSING: Column[] = [
@@ -69,18 +86,25 @@ const PASSING: Column[] = [
   { label: 'YDS', match: ['yds', 'passingyards'] },
   { label: 'TD', match: ['td', 'passingtouchdowns'] },
   { label: 'INT', match: ['int', 'interceptions'] },
+  { label: 'SACKS', match: ['sacks', 'sackssackyardslost'], wide: true },
+  { label: 'RTG', match: ['rtg', 'qbrating'], wide: true },
 ];
 
 const RUSHING: Column[] = [
   { label: 'CAR', match: ['car', 'rushingattempts'] },
   { label: 'YDS', match: ['yds', 'rushingyards'] },
   { label: 'TD', match: ['td', 'rushingtouchdowns'] },
+  { label: 'AVG', match: ['avg', 'yardsperrushattempt'], wide: true },
+  { label: 'LONG', match: ['long', 'longrushing'], wide: true },
 ];
 
 const RECEIVING: Column[] = [
   { label: 'REC', match: ['rec', 'receptions'] },
   { label: 'YDS', match: ['yds', 'receivingyards'] },
   { label: 'TD', match: ['td', 'receivingtouchdowns'] },
+  { label: 'TGT', match: ['tgt', 'receivingtargets'], wide: true },
+  { label: 'AVG', match: ['avg', 'yardsperreception'], wide: true },
+  { label: 'LONG', match: ['long', 'longreception'], wide: true },
 ];
 
 const SACKS: Column[] = [{ label: 'SACKS', match: ['sacks'] }];
@@ -100,9 +124,12 @@ function indexes(group: any, columns: Column[]): number[] {
   });
 }
 
-function table(group: any, columns: Column[], title: string): Table | null {
-  const idx = indexes(group, columns);
-  if (idx.every((i) => i < 0)) return null;
+function table(group: any, all: Column[], title: string): Table | null {
+  const found = indexes(group, all);
+  if (found.every((i, c) => i < 0 || all[c].wide)) return null;
+  const keep = all.map((c, i) => !c.wide || found[i] >= 0);
+  const columns = all.filter((_, i) => keep[i]);
+  const idx = found.filter((_, i) => keep[i]);
   const rows = (group?.athletes ?? [])
     .filter((a: any) => !a?.didNotPlay && Array.isArray(a?.stats) && a.stats.length > 0)
     .map((a: any) => ({
@@ -110,7 +137,8 @@ function table(group: any, columns: Column[], title: string): Table | null {
       note: a?.athlete?.position?.abbreviation,
       stats: idx.map((i) => (i >= 0 ? String(a.stats[i] ?? '–') : '–')),
     }));
-  return rows.length ? { title, columns: columns.map((c) => c.label), rows } : null;
+  const wide = columns.filter((c) => c.wide).length;
+  return rows.length ? { title, columns: columns.map((c) => c.label), ...(wide ? { wide } : {}), rows } : null;
 }
 
 /** Nur die besten `limit` Spieler nach Spalte `by` (NFL: Rushing und Receiving). */

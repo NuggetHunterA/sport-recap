@@ -17,9 +17,11 @@ describe('Boxscore', () => {
       ] }] },
     ] } };
     const box = parseBoxScore(s, game('NBA'));
-    expect(box.away?.tables[0].columns).toEqual(['MIN', 'PTS', 'REB', 'AST']);
-    expect(box.away?.tables[0].rows).toEqual([{ name: 'S. Curry', note: 'G', stats: ['35', '34', '5', '7'] }]);
-    expect(box.home?.tables[0].rows[0].stats).toEqual(['36', '29', '8', '9']);
+    // Hinter den vier Hauptspalten die Zusatzspalten für breite Bildschirme
+    expect(box.away?.tables[0].columns).toEqual(['MIN', 'PTS', 'REB', 'AST', 'FG', '3PT', 'FT', 'STL', 'BLK', 'TO', '+/-']);
+    expect(box.away?.tables[0].wide).toBe(7);
+    expect(box.away?.tables[0].rows).toEqual([{ name: 'S. Curry', note: 'G', stats: ['35', '34', '5', '7', '12-22', '6-12', '4-4', '2', '0', '4', '-5'] }]);
+    expect(box.home?.tables[0].rows[0].stats.slice(0, 4)).toEqual(['36', '29', '8', '9']);
     expect(box.line).toBeUndefined();
   });
 
@@ -42,9 +44,20 @@ describe('Boxscore', () => {
     expect(box.line?.away).toMatchObject({ abbr: 'GS', r: '4', h: '7', e: '1' });
     expect(box.line?.home.runs[8]).toBe('2');
     expect(box.away?.tables.map((t) => t.title)).toEqual(['Batter', 'Pitcher']);
-    expect(box.away?.tables[0].rows[0].stats).toEqual(['4', '1', '2', '1', '1', '0', '1']);
-    expect(box.away?.tables[1].rows[0].stats).toEqual(['6.0', '5', '3', '3', '2', '8']);
+    expect(box.away?.tables[0].rows[0].stats).toEqual(['4', '1', '2', '1', '1', '0', '1', '.300', '.380', '.500']);
+    expect(box.away?.tables[1].columns).toEqual(['IP', 'H', 'R', 'ER', 'BB', 'K', 'HR', 'PC', 'ERA']);
+    expect(box.away?.tables[1].rows[0].stats).toEqual(['6.0', '5', '3', '3', '2', '8', '1', '98', '3.20']);
     expect(box.home?.tables).toEqual([]);
+  });
+
+  it('Zusatzspalten, die ESPN nicht liefert, entfallen statt leer zu bleiben', () => {
+    const s = { boxscore: { players: [
+      { team: { abbreviation: 'GS' }, statistics: [{ labels: ['MIN', 'PTS', 'REB', 'AST', 'STL'], athletes: [ath('S. Curry', ['35', '34', '5', '7', '2'])] }] },
+      { team: { abbreviation: 'LAL' }, statistics: [] },
+    ] } };
+    const box = parseBoxScore(s, game('NBA'));
+    expect(box.away?.tables[0].columns).toEqual(['MIN', 'PTS', 'REB', 'AST', 'STL']);
+    expect(box.away?.tables[0].wide).toBe(1);
   });
 
   it('NFL: QB, beste Rusher und Receiver, Defense mit Sacks und INTs, Touchdowns', () => {
@@ -70,9 +83,9 @@ describe('Boxscore', () => {
     };
     const box = parseBoxScore(s, game('NFL'));
     const t = Object.fromEntries((box.away?.tables ?? []).map((x) => [x.title, x]));
-    expect(t.Quarterback.rows[0].stats).toEqual(['24/35', '281', '2', '1']);
+    expect(t.Quarterback.rows[0].stats).toEqual(['24/35', '281', '2', '1', '2-14', '98.7']);
     expect(t.Rushing.rows.map((r) => r.name)).toEqual(['B', 'C', 'A']);
-    expect(t.Receiving.rows[0].stats).toEqual(['8', '90', '1']);
+    expect(t.Receiving.rows[0].stats).toEqual(['8', '90', '1', '10', '11.3', '25']);
     expect(t.Defense.rows.map((r) => [r.name, ...r.stats])).toEqual([['C. Jones', '1.5', '0'], ['T. McDuffie', '0', '1']]);
     expect(box.away?.touchdowns).toEqual(['Q2 · T. Kelce 12 Yd pass from P. Mahomes']);
     expect(box.home?.touchdowns).toEqual(['Q4 · T. Etienne 3 Yd Run']);
