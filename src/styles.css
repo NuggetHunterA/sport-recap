@@ -167,6 +167,11 @@ button.big-score { color: inherit; padding: 0; cursor: pointer; }
 .team-row.on .team-star { color: var(--accent); }
 
 .more:disabled { opacity: .4; cursor: default; }
+.account { display: flex; flex-direction: column; gap: 10px; }
+.account input { min-height: 46px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; font-size: 16px; }
+.account-actions { display: flex; gap: 8px; }
+.account-actions .more { flex: 1; }
+.more.primary { border: none; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .push-code { width: 100%; min-height: 72px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--muted); font: 12px/1.4 ui-monospace, monospace; word-break: break-all; resize: none; }
 
 /* Tabellen: dunkle Anzeigetafeln, verdeckt bis „Aufdecken“ */
@@ -363,6 +368,6 @@ a.live-link .live-word { display: inline-flex; align-items: center; gap: 5px; }
   /* Trennlinien rechts und unten; am Rand schneidet die Liste sie ab */
   .team-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
   .team-row, .team-row:last-child { border-bottom: none; box-shadow: 1px 1px 0 var(--line); }
-  .section > .lead, .section > .more { max-width: 720px; }
+  .section > .lead, .section > .more, .account { max-width: 720px; }
   .section > .more { justify-self: start; padding: 0 22px; }
 }

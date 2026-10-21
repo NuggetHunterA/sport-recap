@@ -12,6 +12,8 @@ import type { RatedGame } from './nights';
 import type { Game } from './types';
 import type { LeagueFilter as Filter } from './types';
 import { LEAGUES } from './types';
+import type { Session } from '@supabase/supabase-js';
+import { REVEALED_LIMIT, pull, saveFavoritesRemote, saveRevealedRemote, supabase } from './sync';
 
 type Tab = 'night' | 'tonight' | 'standings' | 'teams';
 
@@ -23,6 +25,10 @@ function readRevealed(): Set<string> {
   } catch {
     return new Set();
   }
+}
+
+function writeRevealed(ids: Set<string>) {
+  try { localStorage.setItem(REVEALED_KEY, JSON.stringify([...ids].slice(-REVEALED_LIMIT))); } catch { /* egal */ }
 }
 
 export function App() {
@@ -65,17 +71,51 @@ export function App() {
   const [filter, setFilter] = useState<Filter>('Alle');
   const [revealed, setRevealed] = useState(readRevealed);
   const [favorites, setFavorites] = useState(loadFavorites);
+  const [session, setSession] = useState<Session | null>(null);
   const updateFavorites = (next: Favorite[]) => {
+    if (session) saveFavoritesRemote(favorites, next);
     setFavorites(next);
     saveFavorites(next);
   };
 
   const toggle = (id: string) => () => {
     const next = new Set(revealed);
-    next.has(id) ? next.delete(id) : next.add(id);
+    const open = !next.has(id);
+    open ? next.add(id) : next.delete(id);
     setRevealed(next);
-    try { localStorage.setItem(REVEALED_KEY, JSON.stringify([...next].slice(-500))); } catch { /* egal */ }
+    writeRevealed(next);
+    if (session) saveRevealedRemote(id, open);
   };
+
+  // Anmeldung beobachten; Supabase wird erst nach dem ersten Bild nachgeladen
+  useEffect(() => {
+    let unsubscribe = () => {};
+    let gone = false;
+    supabase().then((db) => {
+      if (gone) return;
+      const { data } = db.auth.onAuthStateChange((_event, s) => setSession(s));
+      unsubscribe = () => data.subscription.unsubscribe();
+    }).catch(() => { /* offline: lokal weiter */ });
+    return () => { gone = true; unsubscribe(); };
+  }, []);
+
+  // Abgleich nach dem Anmelden, beim Zurückkehren in die App und beim Ziehen
+  const local = useRef({ favorites, revealed });
+  local.current = { favorites, revealed };
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!session) return;
+    let gone = false;
+    pull(session, { favorites: local.current.favorites, revealed: [...local.current.revealed] }).then((next) => {
+      if (gone) return;
+      setFavorites(next.favorites);
+      saveFavorites(next.favorites);
+      const ids = new Set(next.revealed);
+      setRevealed(ids);
+      writeRevealed(ids);
+    }).catch(() => { /* offline: lokaler Stand bleibt */ });
+    return () => { gone = true; };
+  }, [userId, stamp]);
 
   return (
     <Refresh.Provider value={{ stamp, settled }}>
@@ -85,7 +125,7 @@ export function App() {
       {tab === 'night' && <NightView date={date} today={today} setDate={setDate} filter={filter} setFilter={setFilter} revealed={revealed} toggle={toggle} favorites={favorites} />}
       {tab === 'tonight' && <TonightView filter={filter} setFilter={setFilter} favorites={favorites} />}
       {tab === 'standings' && <StandingsView favorites={favorites} />}
-      {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} />}
+      {tab === 'teams' && <TeamsView favorites={favorites} setFavorites={updateFavorites} session={session} />}
       <nav class="nav" aria-label="Hauptmenü">
         <button type="button" aria-current={tab === 'night' ? 'page' : undefined} onClick={() => setTab('night')}>{Icon.moon} Letzte Nacht</button>
         <button type="button" aria-current={tab === 'tonight' ? 'page' : undefined} onClick={() => setTab('tonight')}>{Icon.clock} Heute Abend</button>
