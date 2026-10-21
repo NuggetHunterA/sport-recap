@@ -5,6 +5,13 @@ Hervorgegangen aus einer Home-Assistant-Automation.
 
 Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, ändert sie hier mit.
 
+## Aufbau
+
+- Drei Tabs: Letzte Nacht, Heute Abend, Tabellen. Am Handy unten in der Leiste, am Desktop oben.
+- Das Zahnrad oben rechts öffnet die [Einstellungen](#einstellungen); dort führt der Pfeil zurück.
+- Ein Ligafilter (Alle, MLB, NBA, NFL) gilt für alle Tabs und die Teamauswahl. „Tabellen“ kennt kein „Alle“: Dort steht die gefilterte Liga, bei „Alle“ die zuletzt gewählte, anfangs MLB. Eine Liga in „Tabellen“ zu wählen setzt den Filter für die ganze App.
+- Tab und Nacht stehen in der Adresse (umgesetzt in `src/route.ts`, geprüft in `src/route.test.ts`): `?tab=tonight`, `?tab=standings`, `?tab=settings`, frühere Nächte mit `?date=2026-10-18`. Ohne Datum gilt immer die aktuelle Nacht. Jeder Wechsel von Tab oder Nacht landet im Verlauf, „Zurück“ führt also zum vorigen Tab bzw. zur vorigen Nacht statt aus der App. Alte Links mit `?tab=teams` öffnen die Einstellungen.
+
 ## Letzte Nacht
 
 **Was gezeigt wird**
@@ -63,7 +70,7 @@ Umgesetzt in `src/watch.ts` (Zuordnung, geprüft in `src/watch.test.ts`) und `sr
 
 **Was gezeigt wird**
 
-- Die Tabellen von MLB, NBA und NFL, eine Liga auf einmal, beim Öffnen immer die MLB.
+- Die Tabellen von MLB, NBA und NFL, eine Liga auf einmal, nach dem gemeinsamen Ligafilter (siehe [Aufbau](#aufbau)).
 - MLB und NFL nach Divisionen, dazu je Liga bzw. Conference eine Wild-Card-Tabelle (ohne Divisionssieger, Linie nach Platz 3, Abstand zum letzten Wild-Card-Platz).
 - NBA nach Conference mit Linien nach Platz 6 (Playoffs) und 10 (Play-In).
 - Markierungen von ESPN: x Playoffs sicher, y Division gewonnen, z bester Platz, e ausgeschieden. Lieblingsteams sind hervorgehoben.
@@ -73,16 +80,18 @@ Umgesetzt in `src/watch.ts` (Zuordnung, geprüft in `src/watch.test.ts`) und `sr
 
 - Beim Öffnen des Tabs ist alles außer den Überschriften verschwommen und die Teamfarben sind grau; „Aufdecken“ macht die gewählte Liga lesbar.
 
-## Meine Teams
+## Einstellungen
 
-- Alle Teams aus MLB, NBA und NFL. Ein Tipp auf den Stern macht ein Team zum Lieblingsteam.
-- Lieblingsteams stehen in den anderen Tabs immer ganz oben.
+Kein Tab, sondern eine Seite hinter dem Zahnrad, weil man sie selten braucht.
+
+- Meine Teams: alle Teams aus MLB, NBA und NFL nach dem Ligafilter. Ein Tipp auf den Stern macht ein Team zum Lieblingsteam.
+- Lieblingsteams stehen in den Tabs immer ganz oben und sind in den Tabellen hervorgehoben.
 - Die Auswahl wird im Browser des Geräts gespeichert. Ein neues Gerät startet mit den Standardteams aus `src/config.ts`. Mit Konto gilt die Auswahl auf allen Geräten, siehe [Konto](#konto).
 - Hier werden auch das Konto und die Benachrichtigungen eingerichtet.
 
 ## Konto
 
-Umgesetzt in `src/sync.ts` (Abgleich, geprüft in `src/sync.test.ts`) und unten in „Meine Teams“ (Anmeldung). Daten in Supabase (Projekt `sport-recap`, Tabellen `favorites` und `revealed`, jeder Benutzer sieht per Row Level Security nur seine Zeilen).
+Umgesetzt in `src/sync.ts` (Abgleich, geprüft in `src/sync.test.ts`) und unten in den Einstellungen (Anmeldung). Daten in Supabase (Projekt `sport-recap`, Tabellen `favorites` und `revealed`, jeder Benutzer sieht per Row Level Security nur seine Zeilen).
 
 - Anmeldung mit E-Mail und Passwort, Konto erstellen mit Bestätigungslink per E-Mail. Ohne Anmeldung funktioniert alles wie bisher nur im Browser.
 - Mit Konto werden Lieblingsteams und aufgedeckte Spiele (die letzten 500) gespeichert und auf allen Geräten abgeglichen: nach dem Anmelden, beim Zurückkehren in die App und beim Herunterziehen. Jede Änderung wird sofort gespeichert.
@@ -97,7 +106,7 @@ Umgesetzt in `src/sync.ts` (Abgleich, geprüft in `src/sync.test.ts`) und unten 
 - Nachmittags um 15 Uhr nur, wenn ein Lieblingsteam oder ein Top-Matchup (nie NFL) vor 23 Uhr startet. Ein Tipp öffnet „Heute Abend“.
 - Nie mit Ergebnis.
 - Gesendet wird vom Workflow `.github/workflows/notify.yml` (Skript `scripts/notify.ts`, Texte in `src/notify.ts`). GitHub startet geplante Läufe teils mit Verspätung.
-- Einrichten: in „Meine Teams“ auf „Benachrichtigungen einrichten“ tippen und den kopierten Code im Repo unter Settings → Secrets and variables → Actions als Secret `PUSH_CONFIG` speichern. Nach Änderungen an den Lieblingsteams den Code neu kopieren.
+- Einrichten: in den Einstellungen auf „Benachrichtigungen einrichten“ tippen und den kopierten Code im Repo unter Settings → Secrets and variables → Actions als Secret `PUSH_CONFIG` speichern. Nach Änderungen an den Lieblingsteams den Code neu kopieren.
 
 ## Bewertung
 
@@ -147,7 +156,8 @@ Herleitung, Backtests und verworfene Varianten stehen im Projektordner unter `do
 - `src/boxscore.ts`, `src/BoxSheet.tsx`: Boxscore aus der ESPN-Spielzusammenfassung und die Ansicht dazu
 - `src/standings.ts`, `src/StandingsView.tsx`: Tabellen von ESPN, Wild Card und die Ansicht dazu
 - `src/config.ts`: Standard-Lieblingsteams, Rivalitäten (MLB, NBA), Grenze für Top-Matchups
-- `src/teams.ts`: feste Teamliste für „Meine Teams“
+- `src/route.ts`: Tab und Datum in der Adresse
+- `src/teams.ts`: feste Teamliste für die Einstellungen
 - `src/favorites.ts`: Lieblingsteams laden, speichern und Spielen zuordnen
 - `src/sync.ts`: Konto und Abgleich mit Supabase
 - `src/watch.ts`, `src/WatchMenu.tsx`: Links zu Highlights und zum ganzen Spiel, Play-Knopf mit Menü

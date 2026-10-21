@@ -29,10 +29,15 @@ img { display: block; }
 /* Kopf */
 .head { position: relative; padding: calc(env(safe-area-inset-top) + 26px) 20px 10px; display: flex; flex-direction: column; gap: 6px; }
 .head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.date { white-space: nowrap; display: flex; align-items: center; gap: 2px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.date { min-width: 0; display: flex; align-items: center; gap: 2px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
 .step { min-width: 36px; min-height: 36px; border: none; background: transparent; color: var(--muted); border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }
 .step:disabled { opacity: .25; cursor: default; }
-.pill { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(70,45,25,.06); border: 1px solid rgba(70,45,25,.08); font-size: 12px; color: #5c4a39; }
+/* Zahnrad oben rechts öffnet die Einstellungen; die erste Kopfzeile lässt ihm Platz */
+.gear { position: absolute; top: calc(env(safe-area-inset-top) + 20px); right: 14px; z-index: 5; width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(70,45,25,.1); background: rgba(251,247,240,.8); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
+.app:has(> .gear) .head > :is(:first-child, .head-row) { margin-right: 46px; }
+/* Schmale Handys: „Aufdecken“ rutscht unter den Titel statt unter das Zahnrad */
+.head > .head-row:has(.reveal-btn) { flex-wrap: wrap; }
+.pill { white-space: nowrap; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(70,45,25,.06); border: 1px solid rgba(70,45,25,.08); font-size: 12px; color: #5c4a39; }
 h1 { margin: 0; font-family: var(--heading); font-weight: 800; font-size: 48px; line-height: .98; letter-spacing: -.01em; }
 h1 span { color: var(--accent); }
 .stats { display: flex; gap: 8px; margin-top: 10px; }
@@ -143,7 +148,7 @@ button.big-score { color: inherit; padding: 0; cursor: pointer; }
 @keyframes shimmer { to { background-position: -200% 0 } }
 
 /* Navigation */
-.nav { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 14px); width: calc(100% - 28px); max-width: 532px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 4px; padding: 6px; border-radius: 22px; background: rgba(251,247,240,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(70,45,25,.1); box-shadow: 0 10px 30px rgba(70,45,25,.18); z-index: 10; }
+.nav { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 14px); width: calc(100% - 28px); max-width: 532px; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 4px; padding: 6px; border-radius: 22px; background: rgba(251,247,240,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(70,45,25,.1); box-shadow: 0 10px 30px rgba(70,45,25,.18); z-index: 10; }
 .nav button { min-height: 52px; border: none; border-radius: 16px; background: transparent; color: var(--dim); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; }
 .nav button[aria-current='page'] { background: rgba(70,45,25,.08); color: var(--accent); font-weight: 600; }
 
@@ -330,7 +335,9 @@ a.live-link .live-word { display: inline-flex; align-items: center; gap: 5px; }
 @media (min-width: 900px) {
   .app { max-width: 1240px; padding: 0 32px 56px; overflow-x: clip; }
   .glow { left: 0; width: 720px; height: 380px; }
-  .nav { order: -1; position: sticky; top: 14px; left: auto; bottom: auto; transform: none; align-self: center; width: auto; max-width: none; margin-top: 16px; grid-template-columns: repeat(4, auto); }
+  .nav { order: -1; position: sticky; top: 14px; left: auto; bottom: auto; transform: none; align-self: center; width: auto; max-width: none; margin-top: 16px; grid-template-columns: repeat(3, auto); }
+  .gear { top: 22px; right: 32px; }
+  .app:has(> .gear) .head > :is(:first-child, .head-row) { margin-right: 0; }
   .nav button { flex-direction: row; gap: 8px; min-height: 44px; padding: 0 18px; font-size: 14px; }
   .nav button svg { width: 18px; height: 18px; }
   .head { padding: 22px 0 10px; flex-direction: row; flex-wrap: wrap; align-items: flex-end; column-gap: 32px; row-gap: 8px; }

@@ -2,7 +2,8 @@ import { useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { formatTime, liveLabel } from './nights';
 import type { RatedGame, Scored, Tier, Upcoming } from './nights';
-import type { Game, Team } from './types';
+import type { Game, LeagueFilter, Team } from './types';
+import { LEAGUES } from './types';
 import type { Favorite } from './favorites';
 import { historicFeats } from './rating';
 import { TEAMS } from './teams';
@@ -25,8 +26,21 @@ export const Icon = {
   trophy: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" /></svg>,
   refresh: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 4v5h-5" /></svg>,
   play: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" /></svg>,
+  gear: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>,
   right: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>,
 };
+
+/** Ligafilter; `all: false` ohne „Alle“ (Tabellen) */
+export function FilterBar<F extends LeagueFilter>({ filter, setFilter, all = true }: { filter: F; setFilter: (f: F) => void; all?: boolean }) {
+  const options = (all ? ['Alle', ...LEAGUES] : LEAGUES) as F[];
+  return (
+    <div class="filter" role="group" aria-label={all ? 'Liga filtern' : 'Liga wählen'}>
+      {options.map((f) => (
+        <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>
+      ))}
+    </div>
+  );
+}
 
 /** ESPN-Logo in der Variante für dunkle Hintergründe, mit dem normalen Logo als Ersatz. */
 function logoCandidates(logo?: string): string[] {

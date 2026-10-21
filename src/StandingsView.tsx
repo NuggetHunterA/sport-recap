@@ -1,13 +1,12 @@
 import { Fragment } from 'preact';
 import { useState } from 'preact/hooks';
-import { Icon, Skeletons } from './components';
+import { FilterBar, Icon, Skeletons } from './components';
 import { matches } from './favorites';
 import type { Favorite } from './favorites';
 import { useLoad } from './refresh';
 import { loadStandings } from './standings';
 import type { LeagueStandings, Standing, Table } from './standings';
 import type { League } from './types';
-import { LEAGUES } from './types';
 
 const CLINCH = ['x', 'y', 'z', 'e'];
 const LEGEND: Record<string, string> = {
@@ -17,8 +16,8 @@ const LEGEND: Record<string, string> = {
   e: 'Ausgeschieden',
 };
 
-export function StandingsView({ favorites }: { favorites: Favorite[] }) {
-  const [league, setLeague] = useState<League>('MLB');
+/** `league` folgt dem gemeinsamen Ligafilter; die Wahl hier gilt für die ganze App. */
+export function StandingsView({ league, setLeague, favorites }: { league: League; setLeague: (l: League) => void; favorites: Favorite[] }) {
   // Bei jedem Öffnen des Tabs wieder verdeckt: der Zustand lebt nur, solange der Tab offen ist
   const [revealed, setRevealed] = useState<Set<League>>(new Set());
   const { data, error, loading } = useLoad<LeagueStandings>(() => loadStandings(league), [league]);
@@ -42,11 +41,7 @@ export function StandingsView({ favorites }: { favorites: Favorite[] }) {
           </button>
         </div>
       </header>
-      <div class="filter" role="group" aria-label="Liga wählen">
-        {LEAGUES.map((l) => (
-          <button key={l} type="button" aria-pressed={league === l} onClick={() => setLeague(l)}>{l}</button>
-        ))}
-      </div>
+      <FilterBar filter={league} setFilter={setLeague} all={false} />
       <main class="boards">
         {loading && <Skeletons />}
         {error && <div class="error">Die Tabellen konnten nicht geladen werden ({error}).</div>}

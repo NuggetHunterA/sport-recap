@@ -1,5 +1,5 @@
 // Schickt die Push-Benachrichtigung (läuft im GitHub-Workflow „Notify“).
-// PUSH_CONFIG ist der Code aus „Meine Teams“ → „Benachrichtigungen“.
+// PUSH_CONFIG ist der Code aus den Einstellungen (Zahnrad) → „Benachrichtigungen“.
 import webpush from 'web-push';
 import { afternoonMessage, morningMessage } from '../src/notify';
 import type { Message } from '../src/notify';
@@ -30,7 +30,7 @@ if (message) {
     // 404/410: Das Gerät ist beim Push-Dienst abgemeldet (z. B. App neu installiert oder Benachrichtigungen aus)
     if (!(e instanceof webpush.WebPushError) || (e.statusCode !== 404 && e.statusCode !== 410)) throw e;
     console.error(`::error title=Gerät abgemeldet::Der Push-Dienst kennt dieses Gerät nicht mehr (${e.statusCode}). `
-      + 'In der App unter „Meine Teams“ → „Benachrichtigungen“ neu einrichten und den Code als Secret PUSH_CONFIG ersetzen.');
+      + 'In der App unter Einstellungen (Zahnrad) → „Benachrichtigungen“ neu einrichten und den Code als Secret PUSH_CONFIG ersetzen.');
     process.exit(1);
   }
 }

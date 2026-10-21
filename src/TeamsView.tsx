@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'preact/hooks';
-import { FilterBar } from './App';
-import { Badge, Icon } from './components';
+import { Badge, FilterBar, Icon } from './components';
 import { matches } from './favorites';
 import { setupPush } from './push';
 import type { Favorite } from './favorites';
@@ -11,7 +10,11 @@ import type { TeamInfo } from './teams';
 import type { Session } from '@supabase/supabase-js';
 import { signOut, supabase } from './sync';
 
-export function TeamsView({ favorites, setFavorites, session }: { favorites: Favorite[]; setFavorites: (f: Favorite[]) => void; session: Session | null }) {
+/** Einstellungen: Lieblingsteams, Konto und Benachrichtigungen; geöffnet über das Zahnrad im Kopf */
+export function TeamsView({ favorites, setFavorites, session, filter, setFilter, onBack }: {
+  favorites: Favorite[]; setFavorites: (f: Favorite[]) => void; session: Session | null;
+  filter: LeagueFilter; setFilter: (f: LeagueFilter) => void; onBack: () => void;
+}) {
   const [push, setPush] = useState<{ code?: string; error?: string }>({});
   const setup = async () => {
     try {
@@ -22,7 +25,6 @@ export function TeamsView({ favorites, setFavorites, session }: { favorites: Fav
       setPush({ error: `Einrichtung fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}` });
     }
   };
-  const [filter, setFilter] = useState<LeagueFilter>('Alle');
   const data = TEAMS;
 
   const isFav = (t: TeamInfo) => favorites.some((f) => f.league === t.league && matches(f, t.name));
@@ -41,11 +43,14 @@ export function TeamsView({ favorites, setFavorites, session }: { favorites: Fav
     <>
       <header class="head">
         <div class="head-row">
-          <div class="date">Lieblingsteams</div>
+          <div class="date">
+            <button type="button" class="step" aria-label="Zurück" onClick={onBack}>{Icon.left}</button>
+            Einstellungen
+          </div>
           <div class="pill">{Icon.starFilled} {favorites.length} ausgewählt</div>
         </div>
         <h1>Meine<br /><span>Teams</span></h1>
-        <p class="lead">Deine Teams stehen bei „Letzte Nacht“ und „Heute Abend“ immer ganz oben. {session ? 'Die Auswahl wird in deinem Konto gespeichert und auf allen Geräten abgeglichen.' : 'Die Auswahl wird auf diesem Gerät gespeichert.'}</p>
+        <p class="lead">Deine Teams stehen bei „Letzte Nacht“ und „Heute Abend“ immer ganz oben und sind in den Tabellen hervorgehoben. {session ? 'Die Auswahl wird in deinem Konto gespeichert und auf allen Geräten abgeglichen.' : 'Die Auswahl wird auf diesem Gerät gespeichert.'}</p>
       </header>
       <FilterBar filter={filter} setFilter={setFilter} />
       <main>
