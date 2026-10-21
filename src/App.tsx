@@ -196,13 +196,12 @@ function NightView(props: {
           </div>
           <div class="pill">{Icon.shield} Spoilerfrei</div>
         </div>
-        <h1>{isToday ? <>Letzte<br /><span>Nacht</span></> : <>Archiv<br /><span>{formatDay(date).split(',')[0].replace('.', '')}</span></>}</h1>
+        <h1>{isToday ? <>Letzte <span>Nacht</span></> : <>Archiv <span>{formatDay(date).split(',')[0].replace('.', '')}</span></>}</h1>
         <div class="stats">
           <div class="stat"><b>{loading ? '–' : view.played}</b><small>Spiele</small></div>
           <button type="button" class="stat" aria-pressed={hotOnly} aria-label="Nur sehenswerte Spiele zeigen" onClick={() => setHotOnly(!hotOnly)}>
             <b class="hot">{loading ? '–' : view.hot}</b><small>Sehenswert</small>
           </button>
-          <div class="stat"><b>{loading ? '–' : view.played - view.hot}</b><small>Verzichtbar</small></div>
         </div>
       </header>
       <FilterBar filter={filter} setFilter={setFilter} />
@@ -274,11 +273,11 @@ function TonightView({ filter, setFilter, favorites }: { filter: Filter; setFilt
           <div class="date">Nächste 24 Stunden</div>
           <div class="pill">{Icon.clock} Deutsche Zeit</div>
         </div>
-        <h1>Heute<br /><span>Abend</span></h1>
+        <h1>Heute <span>Abend</span></h1>
         <div class="stats">
           <div class="stat"><b>{loading ? '–' : total}</b><small>Spiele</small></div>
           <div class="stat"><b class="hot">{loading ? '–' : highlights}</b><small>Highlights</small></div>
-          <div class="stat"><b>{loading || !first ? '–' : formatTime(first.start)}</b><small>Erstes Spiel</small></div>
+          <div class="stat"><b>{loading || !first ? '–' : formatTime(first.start)}</b><small>Beginn</small></div>
         </div>
       </header>
       <FilterBar filter={filter} setFilter={setFilter} />

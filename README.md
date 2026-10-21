@@ -17,7 +17,7 @@ Dieses README ist die Spezifikation der App. Wer eine Regel im Code ändert, än
 **Was gezeigt wird**
 
 - Alle Spiele, deren Start zwischen 12 Uhr am Vortag und 12 Uhr am gewählten Tag (Berliner Zeit) liegt und die beendet sind.
-- Oben die Kennzahlen Spiele, Sehenswert und Verzichtbar; sie folgen dem Ligafilter. NFL-Spiele zählen nie als sehenswert. Ein Tipp auf „Sehenswert“ zeigt nur noch die sehenswerten Spiele.
+- Oben die Kennzahlen Spiele und Sehenswert in einer Zeile; sie folgen dem Ligafilter. NFL-Spiele zählen nie als sehenswert. Ein Tipp auf „Sehenswert“ zeigt nur noch die sehenswerten Spiele.
 - Darunter in dieser Reihenfolge: Spiel der Nacht, Meine Teams, Top-Tipps, Weitere Spiele (eingeklappt).
 - Jedes MLB- und NBA-Spiel mit Balken (1 bis 5, siehe [Bewertung](#bewertung)) und einem Label, das nichts verrät. NFL-Spiele haben weder Balken noch Label.
 - Mit den Pfeilen geht es zu früheren Nächten.

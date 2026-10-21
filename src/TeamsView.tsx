@@ -49,7 +49,7 @@ export function TeamsView({ favorites, setFavorites, session, filter, setFilter,
           </div>
           <div class="pill">{Icon.starFilled} {favorites.length} ausgewählt</div>
         </div>
-        <h1>Meine<br /><span>Teams</span></h1>
+        <h1>Meine <span>Teams</span></h1>
         <p class="lead">Deine Teams stehen bei „Letzte Nacht“ und „Heute Abend“ immer ganz oben und sind in den Tabellen hervorgehoben. {session ? 'Die Auswahl wird in deinem Konto gespeichert und auf allen Geräten abgeglichen.' : 'Die Auswahl wird auf diesem Gerät gespeichert.'}</p>
       </header>
       <FilterBar filter={filter} setFilter={setFilter} />
