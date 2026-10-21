@@ -77,8 +77,19 @@ Umgesetzt in `src/watch.ts` (Zuordnung, geprüft in `src/watch.test.ts`) und `sr
 
 - Alle Teams aus MLB, NBA und NFL. Ein Tipp auf den Stern macht ein Team zum Lieblingsteam.
 - Lieblingsteams stehen in den anderen Tabs immer ganz oben.
-- Die Auswahl wird im Browser des Geräts gespeichert. Ein neues Gerät startet mit den Standardteams aus `src/config.ts`.
-- Hier werden auch die Benachrichtigungen eingerichtet.
+- Die Auswahl wird im Browser des Geräts gespeichert. Ein neues Gerät startet mit den Standardteams aus `src/config.ts`. Mit Konto gilt die Auswahl auf allen Geräten, siehe [Konto](#konto).
+- Hier werden auch das Konto und die Benachrichtigungen eingerichtet.
+
+## Konto
+
+Umgesetzt in `src/sync.ts` (Abgleich, geprüft in `src/sync.test.ts`) und unten in „Meine Teams“ (Anmeldung). Daten in Supabase (Projekt `sport-recap`, Tabellen `favorites` und `revealed`, jeder Benutzer sieht per Row Level Security nur seine Zeilen).
+
+- Anmeldung mit E-Mail und Passwort, Konto erstellen mit Bestätigungslink per E-Mail. Ohne Anmeldung funktioniert alles wie bisher nur im Browser.
+- Mit Konto werden Lieblingsteams und aufgedeckte Spiele (die letzten 500) gespeichert und auf allen Geräten abgeglichen: nach dem Anmelden, beim Zurückkehren in die App und beim Herunterziehen. Jede Änderung wird sofort gespeichert.
+- Beim ersten Anmelden auf einem Gerät wird der lokale Stand übernommen: Lieblingsteams nur, wenn das Konto noch keine hat, aufgedeckte Spiele werden zusammengeführt. Danach gilt der Stand des Kontos, damit Entfernen auf einem Gerät auch auf den anderen wirkt.
+- Kann eine Änderung nicht gespeichert werden (offline), gewinnen beim nächsten Abgleich die Lieblingsteams des Geräts.
+- Abmelden lässt den Stand auf dem Gerät stehen.
+- Adresse und öffentlicher Schlüssel stehen in `src/sync.ts` und lassen sich beim Build mit `VITE_SUPABASE_URL` und `VITE_SUPABASE_KEY` ersetzen.
 
 ## Benachrichtigungen
 
@@ -138,6 +149,7 @@ Herleitung, Backtests und verworfene Varianten stehen im Projektordner unter `do
 - `src/config.ts`: Standard-Lieblingsteams, Rivalitäten (MLB, NBA), Grenze für Top-Matchups
 - `src/teams.ts`: feste Teamliste für „Meine Teams“
 - `src/favorites.ts`: Lieblingsteams laden, speichern und Spielen zuordnen
+- `src/sync.ts`: Konto und Abgleich mit Supabase
 - `src/watch.ts`, `src/WatchMenu.tsx`: Links zu Highlights und zum ganzen Spiel, Play-Knopf mit Menü
 - `scripts/nba-schedule.ts`: NBA-Spielplan beim Build holen
 
